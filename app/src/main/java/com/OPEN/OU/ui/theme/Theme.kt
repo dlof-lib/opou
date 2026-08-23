@@ -7,25 +7,31 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-private val OpouLightColors = lightColorScheme(
-    primary = OpouGreen,
-    onPrimary = OpouSurface,
-    secondary = OpouGold,
+private val OpouDarkColors = darkColorScheme(
+    primary = OpouGradientMid,
+    onPrimary = Color.White,
+    secondary = OpouGradientStart,
+    tertiary = OpouGradientEnd,
     background = OpouBackground,
     surface = OpouSurface,
+    surfaceVariant = OpouSurfaceElevated,
     onBackground = OpouTextPrimary,
     onSurface = OpouTextPrimary,
+    onSurfaceVariant = OpouTextSecondary,
+    outline = OpouOutline,
     error = OpouBrokenHeart
 )
 
-private val OpouDarkColors = darkColorScheme(
-    primary = OpouGreenLight,
-    onPrimary = OpouGreenDark,
-    secondary = OpouGold,
-    background = Color(0xFF0E1512),
-    surface = Color(0xFF16201B),
-    onBackground = Color(0xFFE7EFEA),
-    onSurface = Color(0xFFE7EFEA),
+private val OpouLightColors = lightColorScheme(
+    primary = OpouGradientMid,
+    onPrimary = Color.White,
+    secondary = OpouGradientStart,
+    tertiary = OpouGradientEnd,
+    background = OpouBackgroundLight,
+    surface = OpouSurfaceLight,
+    onBackground = OpouTextPrimaryLight,
+    onSurface = OpouTextPrimaryLight,
+    onSurfaceVariant = OpouTextSecondaryLight,
     error = OpouBrokenHeart
 )
 
