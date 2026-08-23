@@ -19,4 +19,7 @@ object FirebasePaths {
     const val TEKING = "teking"
     const val TEKERS = "tekers"
     const val USERNAMES = "usernames"
+    /** فهرس معكوس: /userReactions/{uid}/{postId} -> "LIKE"|"DISLIKE"
+     *  يُستخدم لعرض تفاعل المستخدم الحالي فورًا في التغذية دون الحاجة لطلب منفصل لكل فقرة. */
+    const val USER_REACTIONS = "userReactions"
 }
