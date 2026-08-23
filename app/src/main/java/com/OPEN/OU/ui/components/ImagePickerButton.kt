@@ -2,14 +2,19 @@ package com.OPEN.OU.ui.components
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.OPEN.OU.util.ImageCodec
@@ -47,6 +52,7 @@ fun ImagePickerButton(
         }
     }
 
+    // خلفية دائرية داكنة نصف شفافة حتى تبقى الأيقونة واضحة فوق أي صورة أو بانر خلفها
     IconButton(
         onClick = {
             launcher.launch(
@@ -57,11 +63,23 @@ fun ImagePickerButton(
         },
         enabled = !isProcessing,
         modifier = modifier
+            .size(32.dp)
+            .clip(CircleShape)
+            .background(Color.Black.copy(alpha = 0.55f))
     ) {
         if (isProcessing) {
-            androidx.compose.material3.CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            androidx.compose.material3.CircularProgressIndicator(
+                modifier = Modifier.size(16.dp),
+                strokeWidth = 2.dp,
+                color = Color.White
+            )
         } else {
-            Icon(Icons.Filled.AddPhotoAlternate, contentDescription = "إضافة صورة")
+            Icon(
+                Icons.Filled.AddPhotoAlternate,
+                contentDescription = "إضافة صورة",
+                tint = Color.White,
+                modifier = Modifier.size(18.dp)
+            )
         }
     }
 }
