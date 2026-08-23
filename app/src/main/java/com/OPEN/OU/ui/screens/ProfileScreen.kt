@@ -24,7 +24,8 @@ import com.OPEN.OU.util.ImageCodec
 fun ProfileScreen(
     uid: String,
     viewModel: ProfileViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onEditRoom: () -> Unit = {}
 ) {
     val room by viewModel.room.collectAsState()
     val isTeking by viewModel.isTeking.collectAsState()
@@ -116,7 +117,7 @@ fun ProfileScreen(
                     Text(if (isTeking) "إلغاء التيك" else stringResource(R.string.action_tek))
                 }
             } else if (myUid == uid) {
-                OutlinedButton(onClick = { /* TODO: شاشة تعديل الغرفة الكاملة (السيرة، اسم المجتمع) */ }) {
+                OutlinedButton(onClick = onEditRoom) {
                     Text(stringResource(R.string.profile_edit))
                 }
             }
