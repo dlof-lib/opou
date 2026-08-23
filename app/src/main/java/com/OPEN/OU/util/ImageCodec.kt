@@ -31,8 +31,23 @@ object ImageCodec {
     enum class ImageProfile(val maxDimension: Int, val targetBytes: Int) {
         AVATAR(512, 180_000),      // صورة رمزية: مربعة صغيرة، جودة عالية
         BANNER(1280, 350_000),     // بانر الغرفة: عريض
-        POST_IMAGE(1600, 700_000)  // صورة داخل فقرة: أكبر مساحة مسموحة
+        // كانت القيمة سابقًا 700_000 بايت، والتي تتحوّل بعد ترميز Base64 (تضخّم ~4/3)
+        // إلى ~933,000 حرف — أي أكبر بالفعل من الحد الآمن المفروض في PostRepository
+        // (900,000 حرف)، ما كان يجعل رفع أي صورة فقرة كبيرة يفشل دائمًا تقريبًا.
+        // خُفِّضت إلى 600_000 بايت (~800,000 حرف بعد الترميز) لتبقى دومًا ضمن الحد الآمن.
+        POST_IMAGE(1600, 600_000)  // صورة داخل فقرة: أكبر مساحة مسموحة
     }
+
+    /**
+     * الحد الأقصى الآمن لطول نص Base64 النهائي الذي يُعيده [encode] — يجب أن يبقى
+     * أقل من الحد المفروض في PostRepository.MAX_SAFE_FIELD_BYTES (900,000 حرف) بهامش
+     * أمان مريح. يُستخدم كشبكة أمان أخيرة للصور المعقّدة جدًا التي لا تضغط جيدًا حتى
+     * عند أدنى جودة مسموحة، بدل إرجاع نتيجة سيُرفضها الخادم لاحقًا دون أن يدري المستخدم لماذا.
+     */
+    private const val SAFE_BASE64_CHAR_LIMIT = 850_000
+
+    /** أصغر أبعاد مسموح بالنزول إليها أثناء إعادة المحاولة، حتى تبقى الصورة مقروءة وواضحة. */
+    private const val MIN_SHRINK_DIMENSION = 320
 
     data class EncodedImage(
         val base64: String,
@@ -59,14 +74,37 @@ object ImageCodec {
             ?: throw IllegalArgumentException("تعذّر فك ترميز الصورة، قد يكون التنسيق غير مدعوم")
 
         val rotated = correctOrientation(context, uri, rawBitmap)
-        val resized = capDimensions(rotated, profile.maxDimension)
-
-        val compressed = adaptiveCompress(resized, profile.targetBytes)
-        if (resized !== rotated) rotated.recycle()
+        var working = capDimensions(rotated, profile.maxDimension)
+        if (working !== rotated) rotated.recycle()
         if (rotated !== rawBitmap) rawBitmap.recycle()
 
-        val base64 = NativeBridge.encodeBase64(compressed.bytes)
-        resized.recycle()
+        var compressed = adaptiveCompress(working, profile.targetBytes)
+        var base64 = NativeBridge.encodeBase64(compressed.bytes)
+
+        // شبكة أمان: بعض الصور (تفاصيل/ضوضاء كثيفة) لا تصل إلى الحجم المستهدف حتى
+        // بأدنى جودة JPEG مسموحة. بدل إرجاع نص Base64 قد يتجاوز الحد الآمن ويُرفض
+        // لاحقًا عند محاولة النشر، نُصغّر الأبعاد تدريجيًا ونُعيد الضغط والترميز
+        // حتى نستقر ضمن الحد الآمن أو نصل لأصغر أبعاد مقبولة.
+        var attempts = 0
+        while (base64.length > SAFE_BASE64_CHAR_LIMIT &&
+            attempts < 4 &&
+            max(working.width, working.height) > MIN_SHRINK_DIMENSION
+        ) {
+            val nextDimension = max(
+                MIN_SHRINK_DIMENSION,
+                (max(working.width, working.height) * 0.75f).toInt()
+            )
+            val shrunk = capDimensions(working, nextDimension)
+            if (shrunk === working) break // لم يعد بالإمكان التصغير أكثر
+            working.recycle()
+            working = shrunk
+
+            compressed = adaptiveCompress(working, profile.targetBytes)
+            base64 = NativeBridge.encodeBase64(compressed.bytes)
+            attempts++
+        }
+
+        working.recycle()
 
         return EncodedImage(
             base64 = base64,
