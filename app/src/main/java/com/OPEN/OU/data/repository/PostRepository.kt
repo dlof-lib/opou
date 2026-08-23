@@ -41,7 +41,13 @@ class PostRepository(
     }
 
     /** إعادة نشر فقرة أصلية باسم "تيك" — تُنشئ فقرة جديدة مرتبطة بالأصل، وتزيد عداد التيك للأصل */
-    suspend fun tekPost(original: Post, tekingUserId: String, tekingUsername: String, tekingAvatar: String): String {
+    suspend fun tekPost(
+        original: Post,
+        tekingUserId: String,
+        tekingUsername: String,
+        tekingAvatar: String,
+        tekingAvatarBase64: String = ""
+    ): String {
         val newRef = postsRef.push()
         val postId = newRef.key.orEmpty()
         val tekPost = Post(
@@ -49,6 +55,7 @@ class PostRepository(
             authorId = tekingUserId,
             authorUsername = tekingUsername,
             authorAvatarUrl = tekingAvatar,
+            authorAvatarBase64 = tekingAvatarBase64,
             content = original.content,
             imageBase64 = original.imageBase64,
             isTek = true,
