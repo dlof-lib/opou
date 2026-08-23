@@ -29,5 +29,35 @@ data class Post(
     val isTek: Boolean = false,
     val originalPostId: String? = null,
     val originalAuthorId: String? = null,
-    val originalAuthorUsername: String? = null
-)
+    val originalAuthorUsername: String? = null,
+
+    // ===== تنسيق الفقرة (Paragraph styling) =====
+    /** لون خلفية بطاقة الفقرة كاملة، بصيغة Hex مثل "#0B7A4A"، فارغ = بلا لون (افتراضي السطح) */
+    val backgroundColor: String = "",
+    /** إيموجي الفقرة — ميزة قيد التطوير، القيم المسموحة حاليًا محدودة في ParagraphEmoji.AVAILABLE */
+    val emoji: String = "",
+    /** لون نص المحتوى، بصيغة Hex، فارغ = اللون الافتراضي */
+    val textColor: String = "",
+    /** تعريض النص (Bold) */
+    val textBold: Boolean = false,
+    /** تسطير النص (Underline) */
+    val textUnderline: Boolean = false,
+    /** لون خلفية النص نفسه (تظليل)، بصيغة Hex، فارغ = بلا تظليل */
+    val textBackgroundColor: String = "",
+    /** روابط مرفقة مع الفقرة (تُعرض كعناصر قابلة للنقر أسفل المحتوى) */
+    val links: List<String> = emptyList(),
+    /** كود HTML قصير مخصّص (مجموعة وسوم محدودة وآمنة فقط، تُعرض داخل التطبيق وليس عبر WebView) */
+    val customHtml: String = "",
+
+    // ===== خصوصية ووقت نشر الفقرة =====
+    /** مستوى الخصوصية: PUBLIC / PRIVATE / LIMITED / CUSTOM — راجع ParagraphPrivacy */
+    val privacy: String = "PUBLIC",
+    /** قائمة معرّفات المستخدمين المسموح لهم بالمشاهدة عند privacy = CUSTOM */
+    val allowedViewerIds: List<String> = emptyList(),
+    /** إن كانت أكبر من الوقت الحالي، تُعتبر الفقرة "مجدولة" ولا تظهر في التغذية حتى يحين موعدها */
+    val scheduledAt: Long? = null
+) {
+    /** هل الفقرة لا تزال بانتظار موعد نشرها المجدول؟ */
+    fun isScheduledForFuture(nowMillis: Long = System.currentTimeMillis()): Boolean =
+        scheduledAt != null && scheduledAt > nowMillis
+}
