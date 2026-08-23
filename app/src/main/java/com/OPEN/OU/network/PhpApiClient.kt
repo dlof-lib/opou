@@ -1,6 +1,7 @@
 package com.OPEN.OU.network
 
 import com.OPEN.OU.BuildConfig
+import com.OPEN.OU.notifications.FcmTopics
 import com.google.firebase.auth.FirebaseAuth
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -69,7 +70,7 @@ class PhpBridgeRepository(
         if (targetFcmToken.isBlank()) return
         val token = bearerTokenOrNull() ?: return
         runCatching {
-            service.notify(token, NotifyRequest(targetFcmToken, title, body))
+            service.notify(token, NotifyRequest(targetToken = targetFcmToken, title = title, body = body))
         }.onFailure { Timber.tag("PHP-API").w(it, "فشل إرسال إشعار عبر notify.php") }
     }
 
@@ -84,5 +85,36 @@ class PhpBridgeRepository(
             val response = service.compressBase64Image(token, Base64ImageRequest(base64))
             if (response.success) response else null
         }.onFailure { Timber.tag("PHP-API").w(it, "فشل الضغط عبر base64_image.php") }.getOrNull()
+    }
+
+    /**
+     * يبث إشعار "فقرة جديدة" لكل مستخدمي التطبيق دفعة واحدة عبر موضوع
+     * [FcmTopics.NEW_PARAGRAPHS]، بعد نشر فقرة عامة (PUBLIC) بنجاح.
+     * Best-effort بالكامل: فشل الشبكة هنا لا يجب أبدًا أن يمنع نشر الفقرة فعليًا،
+     * لذلك يُستدعى دائمًا بعد نجاح createPost ولا يرمي استثناءً مطلقًا.
+     */
+    suspend fun notifyNewParagraphBestEffort(
+        postId: String,
+        authorUsername: String,
+        contentPreview: String
+    ) {
+        val token = bearerTokenOrNull() ?: return
+        val safePreview = contentPreview.trim().let {
+            if (it.length > 120) it.take(117) + "…" else it
+        }
+        runCatching {
+            service.notify(
+                token,
+                NotifyRequest(
+                    topic = FcmTopics.NEW_PARAGRAPHS,
+                    title = "فقرة جديدة من $authorUsername",
+                    body = safePreview.ifBlank { "افتح أوبو لقراءة الفقرة الجديدة" },
+                    type = "new_paragraph",
+                    postId = postId,
+                    authorUsername = authorUsername,
+                    preview = safePreview
+                )
+            )
+        }.onFailure { Timber.tag("PHP-API").w(it, "فشل بث إشعار الفقرة الجديدة عبر notify.php") }
     }
 }
