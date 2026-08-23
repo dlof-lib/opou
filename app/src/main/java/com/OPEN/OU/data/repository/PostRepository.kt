@@ -24,13 +24,18 @@ class PostRepository(
     private val usersRef get() = db.getReference(FirebasePaths.USERS)
     private val userReactionsRef get() = db.getReference(FirebasePaths.USER_REACTIONS)
 
-    /** الحد الأقصى الآمن لحجم أي حقل نصي واحد داخل عقدة Realtime Database (بايت تقريبي). */
+    /**
+     * الحد الأقصى الآمن لحجم أي حقل نصي واحد داخل عقدة Realtime Database (عدد الأحرف تقريبًا).
+     * ملاحظة: ImageCodec.SAFE_BASE64_CHAR_LIMIT (850,000) مضبوط ليبقى دومًا أقل من هذا
+     * الحد بهامش أمان مريح، لذا لن يُفعَّل هذا الفحص عمليًا إلا في حالات استثنائية
+     * (مثل صورة جاهزة الترميز أصلًا ولم تمرّ عبر ImageCodec).
+     */
     private val MAX_SAFE_FIELD_BYTES = 900_000
 
     /** نشر فقرة جديدة */
     suspend fun createPost(post: Post): String {
         require(post.imageBase64.length <= MAX_SAFE_FIELD_BYTES) {
-            "حجم الصورة المرفقة أكبر من الحد المسموح — يجب ضغطها عبر ImageCodec أولًا"
+            "حجم الصورة المرفقة أكبر من الحد المسموح حتى بعد الضغط. جرّب صورة أبسط أو أصغر."
         }
         val newRef = postsRef.push()
         val postId = newRef.key.orEmpty()
