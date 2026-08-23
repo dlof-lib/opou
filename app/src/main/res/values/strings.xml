@@ -11,8 +11,13 @@
     <string name="login_no_account">ليس لديك حساب؟ أنشئ غرفتك الآن</string>
     <string name="register_title">أنشئ غرفتك في أوبو</string>
     <string name="register_username">اسم المستخدم</string>
-    <string name="register_community_name">اسم المجتمع (مثل: يوتيوبر)</string>
+    <string name="register_community_name">اسم المجتمع (مثل: أوبوي، يوتيوبر، مصمم)</string>
     <string name="register_button">إنشاء الحساب</string>
+
+    <!-- الاسم الرسمي لمجتمع أوبو: يُطلق على ناشري/مستخدمي المنصة، تمامًا كما يُطلق "يوتيوبر" على مستخدمي يوتيوب -->
+    <string name="official_member_title">أوبوي</string>
+    <string name="official_member_title_female">أوبوية</string>
+    <string name="official_member_title_plural">الأوبويّون</string>
 
     <!-- الملف الشخصي / الغرفة -->
     <string name="profile_room">الغرفة</string>
