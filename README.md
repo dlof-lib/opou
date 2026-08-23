@@ -103,11 +103,16 @@ firebase deploy --only database
 - مربوطة الآن في: `CreatePostScreen` (إرفاق صورة بالفقرة)، `ProfileScreen`
   (تغيير الصورة الرمزية)، و`PostCard`/`FeedScreen` (عرض الصور).
 
-### طبقة تحقق ثانية من جهة الخادم (اختيارية)
-`server/php/base64_image.php` — نقطة نهاية PHP قوية تُستخدم إن رغبت بمسار خادمي
-إضافي: تتحقق من **البصمة الحقيقية** للصورة (magic bytes عبر `getimagesizefromstring`،
-وليس مجرد الوثوق بالامتداد)، ترفض أي حمولة غير صورة فعلية، وتعيد ضغطًا تكيّفيًا
-مطابقًا لمنطق `ImageCodec.kt`.
+### لا اعتماد على PHP لمعالجة الصور
+خط معالجة الصور بالكامل (قراءة → تصغير → تصحيح دوران → ضغط تكيّفي → ترميز
+Base64) يعمل الآن محليًا داخل التطبيق فقط، عبر ثلاث طبقات:
+**Kotlin** (`ImageCodec.kt` + `NativeBridge.kt`) + **C++/JNI** (`base64.cpp`) +
+**XML** (أذونات `AndroidManifest.xml` وإعدادات الشبكة في `network_security_config.xml`).
+لم يعد هناك أي نقطة نهاية PHP لضغط أو التحقق من الصور — تمت إزالة
+`server/php/base64_image.php` نهائيًا لأنها كانت غير مستخدمة أصلًا وتكرارًا
+لمنطق موجود بالفعل بأداء أعلى في الطبقة الأصلية. خادم PHP المساعد أصبح
+مسؤولاً حصريًا عن الإشعارات (`notify.php`) ورفع ملف خام اختياري
+(`upload_avatar.php`، غير مرتبط بـ Realtime Database).
 
 ### حماية على مستوى قاعدة البيانات
 تم تحديث `database.rules.json` لفرض حدود صارمة على حجم كل حقل صورة
@@ -198,7 +203,7 @@ base64 -w0 opou-release.keystore > opou-release.b64
 - التحقق من `exp`/`iat`/`auth_time` بمنطق زمني صحيح.
 - استخراج `uid` حقيقي وموثّق من الحقل `sub`.
 
-كل نقاط النهاية (`upload_avatar.php`, `base64_image.php`, `notify.php`) تستخدم الآن
+كل نقاط النهاية المتبقية (`upload_avatar.php`, `notify.php`) تستخدم الآن
 `require_bearer_token()` المحدَّثة، والتي **ترفض أي رمز غير موقّع بشكل صحيح** بدل
 الاكتفاء بالتحقق من وجود Header فقط كما كان سابقًا.
 
