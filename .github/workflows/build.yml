@@ -46,7 +46,7 @@ jobs:
       - name: Decode release keystore (إن وُجد Secret)
         env:
           OPOU_KEYSTORE_BASE64: ${{ secrets.OPOU_KEYSTORE_BASE64 }}
-        if: ${{ secrets.OPOU_KEYSTORE_BASE64 != '' }}
+        if: ${{ env.OPOU_KEYSTORE_BASE64 != '' }}
         run: |
           echo "$OPOU_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/opou-release.keystore"
           echo "OPOU_KEYSTORE_PATH=$RUNNER_TEMP/opou-release.keystore" >> "$GITHUB_ENV"
