@@ -3,6 +3,7 @@ package com.OPEN.OU.ui.components
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -30,7 +31,12 @@ import com.OPEN.OU.ui.theme.OpouAccentGreen
 import com.OPEN.OU.ui.theme.OpouBrokenHeart
 import com.OPEN.OU.ui.theme.OpouStar
 
-/** شريط تفاعلات الفقرة بأيقونات حقيقية: نجمة (إعجاب) — قلب مكسور (لم يعجبني) — تعليق — تيك (إعادة نشر) */
+/**
+ * شريط تفاعلات الفقرة: أربعة أزرار موزّعة بتباعد متساوٍ — نجمة (إعجاب)،
+ * قلب مكسور (لم يعجبني)، تعليق، وتيك (إعادة نشر). كل زر يحمل خلفية
+ * "كبسولة" لطيفة عند التفعيل مع نبضة حركية خفيفة، لإحساس أكثر رقيًا
+ * من مجرّد أيقونة ورقم عاريين.
+ */
 @Composable
 fun ReactionBar(
     likesCount: Int,
@@ -44,7 +50,9 @@ fun ReactionBar(
     modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -54,7 +62,8 @@ fun ReactionBar(
             count = likesCount,
             selected = currentReaction == ReactionType.LIKE,
             activeColor = OpouStar,
-            onClick = { onReact(if (currentReaction == ReactionType.LIKE) ReactionType.NONE else ReactionType.LIKE) }
+            onClick = { onReact(if (currentReaction == ReactionType.LIKE) ReactionType.NONE else ReactionType.LIKE) },
+            modifier = Modifier.weight(1f)
         )
         IconReactionButton(
             icon = Icons.Filled.HeartBroken,
@@ -62,21 +71,26 @@ fun ReactionBar(
             count = dislikesCount,
             selected = currentReaction == ReactionType.DISLIKE,
             activeColor = OpouBrokenHeart,
-            onClick = { onReact(if (currentReaction == ReactionType.DISLIKE) ReactionType.NONE else ReactionType.DISLIKE) }
+            onClick = { onReact(if (currentReaction == ReactionType.DISLIKE) ReactionType.NONE else ReactionType.DISLIKE) },
+            modifier = Modifier.weight(1f)
         )
-        IconAction(
+        IconReactionButton(
             icon = Icons.Filled.ChatBubbleOutline,
             contentDescription = stringResource(R.string.action_comment),
             count = commentsCount,
-            tint = OpouAccentBlue,
-            onClick = onComment
+            selected = false,
+            activeColor = OpouAccentBlue,
+            onClick = onComment,
+            modifier = Modifier.weight(1f)
         )
-        IconAction(
+        IconReactionButton(
             icon = Icons.Filled.Repeat,
             contentDescription = stringResource(R.string.action_tek),
             count = teksCount,
-            tint = OpouAccentGreen,
-            onClick = onTek
+            selected = false,
+            activeColor = OpouAccentGreen,
+            onClick = onTek,
+            modifier = Modifier.weight(1f)
         )
     }
 }
@@ -88,7 +102,8 @@ private fun IconReactionButton(
     count: Int,
     selected: Boolean,
     activeColor: Color,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val scale by animateFloatAsState(
         targetValue = if (selected) 1.18f else 1f,
@@ -96,64 +111,32 @@ private fun IconReactionButton(
         label = "reactionScale"
     )
     Row(
+        horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
+        modifier = modifier
+            .padding(horizontal = 4.dp, vertical = 6.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (selected) activeColor.copy(alpha = 0.12f) else Color.Transparent)
             .clickable(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() },
                 onClick = onClick
             )
-            .padding(horizontal = 8.dp, vertical = 6.dp)
+            .padding(horizontal = 10.dp, vertical = 8.dp)
     ) {
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = if (selected) activeColor else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-            modifier = Modifier.size(20.dp).scale(scale)
+            tint = if (selected) activeColor else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+            modifier = Modifier.size(19.dp).scale(scale)
         )
         if (count > 0) {
             Spacer(Modifier.width(6.dp))
             Text(
                 text = count.toString(),
                 color = if (selected) activeColor else MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.labelSmall
-            )
-        }
-    }
-}
-
-@Composable
-private fun IconAction(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    contentDescription: String,
-    count: Int,
-    tint: Color,
-    onClick: () -> Unit
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .clickable(
-                indication = null,
-                interactionSource = remember { MutableInteractionSource() },
-                onClick = onClick
-            )
-            .padding(horizontal = 8.dp, vertical = 6.dp)
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = contentDescription,
-            tint = tint.copy(alpha = 0.85f),
-            modifier = Modifier.size(20.dp)
-        )
-        if (count > 0) {
-            Spacer(Modifier.width(6.dp))
-            Text(
-                text = count.toString(),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = if (selected) androidx.compose.ui.text.font.FontWeight.SemiBold else androidx.compose.ui.text.font.FontWeight.Normal
             )
         }
     }
