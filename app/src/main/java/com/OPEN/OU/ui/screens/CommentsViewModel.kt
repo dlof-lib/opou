@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.OPEN.OU.data.model.Comment
 import com.OPEN.OU.data.repository.AuthRepository
 import com.OPEN.OU.data.repository.PostRepository
+import com.OPEN.OU.data.repository.UserRepository
+import com.OPEN.OU.network.PhpBridgeRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,7 +14,9 @@ import kotlinx.coroutines.launch
 
 class CommentsViewModel(
     private val postRepo: PostRepository = PostRepository(),
-    private val authRepo: AuthRepository = AuthRepository()
+    private val authRepo: AuthRepository = AuthRepository(),
+    private val userRepo: UserRepository = UserRepository(),
+    private val phpBridge: PhpBridgeRepository = PhpBridgeRepository()
 ) : ViewModel() {
 
     private val _comments = MutableStateFlow<List<Comment>>(emptyList())
@@ -24,7 +28,18 @@ class CommentsViewModel(
         }
     }
 
-    fun send(postId: String, content: String, username: String, avatar: String) {
+    /**
+     * يرسل تعليقًا جديدًا، ثم يحاول (best-effort) إشعار صاحب الفقرة الأصلية
+     * عبر الجسر Kotlin -> PHP -> FCM. [postAuthorId] اختياري: إن لم يُمرَّر (أو
+     * كان هو نفسه المعلّق) لا يُرسل أي إشعار.
+     */
+    fun send(
+        postId: String,
+        content: String,
+        username: String,
+        avatar: String,
+        postAuthorId: String? = null
+    ) {
         val uid = authRepo.currentUserId ?: return
         if (content.isBlank()) return
         viewModelScope.launch {
@@ -36,6 +51,20 @@ class CommentsViewModel(
                     authorAvatarUrl = avatar,
                     content = content
                 )
+            )
+            if (postAuthorId != null && postAuthorId != uid) {
+                notifyPostAuthorBestEffort(postAuthorId, username)
+            }
+        }
+    }
+
+    private suspend fun notifyPostAuthorBestEffort(postAuthorId: String, commenterUsername: String) {
+        runCatching {
+            val targetUser = userRepo.getUser(postAuthorId) ?: return
+            phpBridge.notifyBestEffort(
+                targetFcmToken = targetUser.fcmToken,
+                title = "تعليق جديد على أوبو",
+                body = "$commenterUsername علّق على فقرتك"
             )
         }
     }
