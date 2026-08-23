@@ -22,7 +22,9 @@ private object Routes {
     const val FEED = "feed"
     const val CREATE_POST = "create_post"
     const val PROFILE = "profile/{uid}"
+    const val EDIT_PROFILE = "edit_profile/{uid}"
     fun profile(uid: String) = "profile/$uid"
+    fun editProfile(uid: String) = "edit_profile/$uid"
 }
 
 @Composable
@@ -105,7 +107,26 @@ fun OpouNavGraph() {
         ) { backStackEntry ->
             val uid = backStackEntry.arguments?.getString("uid").orEmpty()
             val vm: ProfileViewModel = viewModel()
-            ProfileScreen(uid = uid, viewModel = vm, onBack = { navController.popBackStack() })
+            ProfileScreen(
+                uid = uid,
+                viewModel = vm,
+                onBack = { navController.popBackStack() },
+                onEditRoom = { navController.navigate(Routes.editProfile(uid)) }
+            )
+        }
+
+        composable(
+            route = Routes.EDIT_PROFILE,
+            arguments = listOf(navArgument("uid") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val uid = backStackEntry.arguments?.getString("uid").orEmpty()
+            val vm: ProfileViewModel = viewModel()
+            EditRoomScreen(
+                uid = uid,
+                viewModel = vm,
+                onDone = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
+            )
         }
     }
 }
