@@ -56,4 +56,17 @@ class ProfileViewModel(
     fun updateBanner(uid: String, base64: String) {
         viewModelScope.launch { userRepo.updateBanner(uid, base64) }
     }
+
+    /** يحدّث اسم المجتمع والسيرة الذاتية معًا في تحديث واحد (Realtime). */
+    fun updateRoomInfo(uid: String, communityName: String, bio: String) {
+        viewModelScope.launch {
+            userRepo.updateRoom(
+                uid,
+                mapOf(
+                    "communityName" to communityName,
+                    "bio" to bio
+                )
+            )
+        }
+    }
 }
