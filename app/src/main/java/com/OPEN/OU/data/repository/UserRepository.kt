@@ -68,4 +68,34 @@ class UserRepository(
 
     suspend fun isTeking(tekingId: String, tekerId: String): Boolean =
         tekingRef.child(tekingId).child(tekerId).get().await().exists()
+
+    /** جلب لمرة واحدة (وليس استماعًا فوريًا) لبيانات مستخدم — يُستخدم قبل إرسال إشعار PHP مثلًا. */
+    suspend fun getUser(uid: String): User? =
+        usersRef.child(uid).get().await().getValue(User::class.java)
+
+    /** يحفظ رمز إشعارات FCM الحالي للمستخدم (يُستدعى من OpouMessagingService.onNewToken). */
+    suspend fun saveFcmToken(uid: String, token: String) {
+        usersRef.child(uid).child("fcmToken").setValue(token).await()
+    }
+
+    /** يحفظ لغة الواجهة المفضّلة للمستخدم (تُزامن مع util/LanguagePrefs المحلي). */
+    suspend fun saveLanguage(uid: String, language: String) {
+        usersRef.child(uid).child("language").setValue(language).await()
+    }
+
+    /** يجلب معرّفات المستخدمين الذين يتابعهم uid (تيكينغ) — لعرضهم في شاشة "التيكرز". */
+    suspend fun getTekingIds(uid: String): List<String> =
+        tekingRef.child(uid).get().await().children.mapNotNull { it.key }
+
+    /** يجلب معرّفات المستخدمين الذين يتابعون uid (تيكرز) — لعرضهم في شاشة "التيكرز". */
+    suspend fun getTekerIds(uid: String): List<String> =
+        tekersRef.child(uid).get().await().children.mapNotNull { it.key }
+
+    /** يجلب بيانات عدة مستخدمين دفعة واحدة (بالتوازي) اعتمادًا على قائمة معرّفاتهم. */
+    suspend fun getUsersByIds(uids: List<String>): List<User> {
+        if (uids.isEmpty()) return emptyList()
+        return uids.mapNotNull { id ->
+            usersRef.child(id).get().await().getValue(User::class.java)
+        }
+    }
 }
