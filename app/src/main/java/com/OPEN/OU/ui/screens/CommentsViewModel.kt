@@ -38,7 +38,8 @@ class CommentsViewModel(
         content: String,
         username: String,
         avatar: String,
-        postAuthorId: String? = null
+        postAuthorId: String? = null,
+        avatarBase64: String = ""
     ) {
         val uid = authRepo.currentUserId ?: return
         if (content.isBlank()) return
@@ -49,6 +50,7 @@ class CommentsViewModel(
                     authorId = uid,
                     authorUsername = username,
                     authorAvatarUrl = avatar,
+                    authorAvatarBase64 = avatarBase64,
                     content = content
                 )
             )
