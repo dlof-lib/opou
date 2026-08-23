@@ -69,6 +69,26 @@ class PostRepository(
         return postId
     }
 
+    /**
+     * يجلب كل الفقرات دفعة واحدة (وليس Realtime) — تُستخدم من عامل التوصيات
+     * (SuggestionsWorker) في الخلفية لحساب "فقرات مقترحة لك" دون فتح استماع دائم.
+     */
+    suspend fun getAllPostsOnce(): List<Post> =
+        postsRef.get().await().children.mapNotNull { it.getValue(Post::class.java) }
+
+    /**
+     * يجلب خريطة تفاعلات مستخدم معيّن دفعة واحدة: postId -> "LIKE"|"DISLIKE".
+     * تُستخدم كمؤشر اهتمام (المؤلفون الذين أعجبته فقراتهم سابقًا) في عامل التوصيات.
+     */
+    suspend fun getMyReactionsOnce(uid: String): Map<String, String> =
+        userReactionsRef.child(uid).get().await().children
+            .mapNotNull { child -> child.getValue(String::class.java)?.let { child.key.orEmpty() to it } }
+            .toMap()
+
+    /** يتحقق من ظهور فقرة لمستخدم زائر بعينه وفق قواعد الخصوصية — يُستخدم خارج هذا الملف أيضًا (مثال: عامل التوصيات). */
+    fun isVisibleToViewer(post: Post, viewerId: String?, viewerFollowingIds: Set<String> = emptySet()): Boolean =
+        isVisibleTo(post, viewerId, viewerFollowingIds)
+
     /** الاستماع الفوري (Realtime) لتدفق الفقرات الأحدث أولًا، مع تطبيق خصوصية الفقرة وحالة الجدولة */
     fun observeFeed(
         limit: Int = 50,
