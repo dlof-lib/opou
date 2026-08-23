@@ -34,7 +34,8 @@ fun CommentsSheet(
     currentUsername: String,
     currentAvatar: String,
     viewModel: CommentsViewModel,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    postAuthorId: String? = null
 ) {
     val comments by viewModel.comments.collectAsState()
     var text by remember { mutableStateOf("") }
@@ -109,7 +110,7 @@ fun CommentsSheet(
                         Spacer(Modifier.width(8.dp))
                         TextButton(
                             onClick = {
-                                viewModel.send(postId, text, currentUsername, currentAvatar)
+                                viewModel.send(postId, text, currentUsername, currentAvatar, postAuthorId)
                                 text = ""
                             },
                             enabled = text.isNotBlank()
