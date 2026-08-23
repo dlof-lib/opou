@@ -21,6 +21,12 @@
     <string name="profile_following">Following</string>
     <string name="profile_paragraphs">Paragraphs</string>
     <string name="profile_edit">Edit Room</string>
+    <string name="profile_edit_profile">Edit Profile</string>
+    <string name="profile_overview_title">Overview</string>
+    <string name="profile_bio_title">Bio</string>
+    <string name="profile_bio_empty_self">No bio yet — tap to introduce yourself to visitors</string>
+    <string name="profile_bio_empty_other">This room owner hasn\'t added a bio yet</string>
+    <string name="profile_joined_as">Categorized as</string>
     <string name="feed_title">Paragraphs</string>
     <string name="new_paragraph_hint">Express yourself freely…</string>
     <string name="post_button">Post</string>
