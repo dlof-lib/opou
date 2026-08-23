@@ -1,6 +1,7 @@
 package com.OPEN.OU.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -10,11 +11,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.OPEN.OU.ui.components.Base64Image
 import com.OPEN.OU.ui.components.ImagePickerButton
+import com.OPEN.OU.ui.theme.OpouBrandGradient
 import com.OPEN.OU.util.ImageCodec
 
 /**
@@ -31,6 +34,7 @@ fun EditRoomScreen(
     onBack: () -> Unit
 ) {
     val room by viewModel.room.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
 
     var communityName by remember { mutableStateOf("") }
     var bio by remember { mutableStateOf("") }
@@ -38,6 +42,7 @@ fun EditRoomScreen(
     var pendingBanner by remember { mutableStateOf<ImageCodec.EncodedImage?>(null) }
     var imageError by remember { mutableStateOf<String?>(null) }
     var initialized by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(uid) { viewModel.load(uid) }
 
@@ -51,7 +56,15 @@ fun EditRoomScreen(
         }
     }
 
+    LaunchedEffect(errorMessage) {
+        errorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearError()
+        }
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("تعديل الغرفة") },
@@ -73,8 +86,8 @@ fun EditRoomScreen(
                 .verticalScroll(rememberScrollState())
                 .fillMaxSize()
         ) {
-            // البانر
-            Box(Modifier.fillMaxWidth().height(140.dp)) {
+            // البانر — بارتفاع أكبر مساحة، مع زر تغيير واضح في الزاوية
+            Box(Modifier.fillMaxWidth().height(150.dp)) {
                 val user = room
                 when {
                     pendingBanner != null -> Base64Image(
@@ -93,49 +106,53 @@ fun EditRoomScreen(
                     else -> Box(
                         Modifier
                             .fillMaxSize()
-                            .background(Color(0xFF0B7A4A))
+                            .background(OpouBrandGradient)
                     )
                 }
                 ImagePickerButton(
                     profile = ImageCodec.ImageProfile.BANNER,
                     onImageReady = { pendingBanner = it; imageError = null },
                     onError = { imageError = it },
-                    modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp)
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(10.dp)
                 )
             }
 
-            // الصورة الرمزية (تتراكب فوق حافة البانر)
-            Box(
-                Modifier
-                    .padding(start = 20.dp)
-                    .offset(y = (-36).dp)
-            ) {
-                val user = room
-                when {
-                    pendingAvatar != null -> Base64Image(
-                        base64 = pendingAvatar!!.base64,
-                        modifier = Modifier.size(80.dp).clip(CircleShape)
-                    )
-                    user != null && user.avatarBase64.isNotBlank() -> Base64Image(
-                        base64 = user.avatarBase64,
-                        modifier = Modifier.size(80.dp).clip(CircleShape)
-                    )
-                    else -> Box(
-                        Modifier
-                            .size(80.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF0B7A4A))
+            // الصورة الرمزية (تتراكب فوق حافة البانر مثل يوتيوب/إنستغرام)
+            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+                Box(Modifier.offset(y = (-40).dp)) {
+                    val user = room
+                    val avatarModifier = Modifier
+                        .size(88.dp)
+                        .clip(CircleShape)
+                        .border(3.dp, MaterialTheme.colorScheme.background, CircleShape)
+                        .padding(3.dp)
+                        .clip(CircleShape)
+
+                    when {
+                        pendingAvatar != null -> Base64Image(
+                            base64 = pendingAvatar!!.base64,
+                            modifier = avatarModifier,
+                            cornerRadiusDp = 22
+                        )
+                        user != null && user.avatarBase64.isNotBlank() -> Base64Image(
+                            base64 = user.avatarBase64,
+                            modifier = avatarModifier,
+                            cornerRadiusDp = 22
+                        )
+                        else -> Box(
+                            avatarModifier.background(Color(0xFF0B7A4A))
+                        )
+                    }
+                    ImagePickerButton(
+                        profile = ImageCodec.ImageProfile.AVATAR,
+                        onImageReady = { pendingAvatar = it; imageError = null },
+                        onError = { imageError = it },
+                        modifier = Modifier.align(Alignment.BottomEnd)
                     )
                 }
-                ImagePickerButton(
-                    profile = ImageCodec.ImageProfile.AVATAR,
-                    onImageReady = { pendingAvatar = it; imageError = null },
-                    onError = { imageError = it },
-                    modifier = Modifier.align(Alignment.BottomEnd)
-                )
             }
 
-            Column(Modifier.padding(horizontal = 20.dp).padding(top = 0.dp, bottom = 20.dp)) {
+            Column(Modifier.padding(horizontal = 20.dp).padding(top = 0.dp, bottom = 20.dp).offset(y = (-24).dp)) {
                 imageError?.let {
                     Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
                     Spacer(Modifier.height(8.dp))
@@ -146,6 +163,7 @@ fun EditRoomScreen(
                     onValueChange = { communityName = it },
                     label = { Text("اسم المجتمع (مثل: يوتيوبر)") },
                     singleLine = true,
+                    shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(12.dp))
@@ -154,6 +172,7 @@ fun EditRoomScreen(
                     onValueChange = { bio = it },
                     label = { Text("السيرة الذاتية") },
                     minLines = 3,
+                    shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
