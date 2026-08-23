@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     fail('الطريقة غير مسموحة، استخدم POST', 405);
 }
 
-require_bearer_token();
+$uid = require_bearer_token(); // uid موثّق فعليًا من توقيع Firebase (وليس مجرد وجود الرمز)
 
 $raw = file_get_contents('php://input');
 if ($raw === false || strlen($raw) === 0) {
@@ -101,6 +101,7 @@ $cleanBase64 = base64_encode($outputBytes);
 
 json_response([
     'success' => true,
+    'uid' => $uid,
     'base64' => $cleanBase64,
     'mimeType' => 'image/jpeg',
     'width' => $newWidth,
