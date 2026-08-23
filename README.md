@@ -143,13 +143,80 @@ firebase deploy --only database
 
 هذا الخادم اختياري تمامًا؛ التطبيق يعمل بالكامل عبر Firebase وحده بدونه.
 
-## ما يحتاج استكمالًا لاحقًا
+## ما تم استكماله (الجولة الثانية)
 
-- ربط `currentReaction` في `FeedScreen` بحالة تفاعل المستخدم الفعلية من `/reactions`.
-- شاشة تعديل الغرفة الكاملة (السيرة، اسم المجتمع، تغيير البانر عبر `ImagePickerButton` + `ImageProfile.BANNER`).
-- توليد `gradlew`/`gradlew.bat` الفعليين (ملفات ثنائية لم تُدرج هنا).
-- توقيع حقيقي لنسخة Release (متغيرات `OPOU_KEYSTORE_*` في CI).
-- تحقق فعلي من Firebase ID Token داخل ملفات PHP (حاليًا فقط تحقق من وجود Bearer Token).
+### 1) ربط `currentReaction` الفعلي
+تمت إضافة فهرس معكوس `/userReactions/{uid}/{postId}` يُحدَّث تلقائيًا مع كل تفاعل
+(`PostRepository.react`)، ويراقبه `FeedViewModel.myReactions` فوريًا (Realtime)،
+بحيث تعرض `FeedScreen` الآن اللون/الحالة الصحيحة لزر ⭐/💔 لكل فقرة فعليًا — بلا أي بيانات وهمية.
+
+### 2) شاشة تعديل الغرفة الكاملة
+`EditRoomScreen.kt` — تعديل اسم المجتمع والسيرة الذاتية، وتغيير الصورة الرمزية
+والبانر عبر `ImagePickerButton` (`ImageProfile.AVATAR` / `ImageProfile.BANNER`)
+مع معاينة فورية قبل الحفظ. مربوطة في `OpouNavGraph` عبر مسار `edit_profile/{uid}`
+ومفعّلة من زر "تعديل الغرفة" في `ProfileScreen`.
+
+### 3) ملفات `gradlew` / `gradlew.bat`
+تمت إضافة السكربتات النصية القياسية (`gradlew`, `gradlew.bat`) و
+`gradle/wrapper/gradle-wrapper.properties` (يشير إلى Gradle 8.7).
+
+> ⚠️ **تنويه مهم**: ملف `gradle-wrapper.jar` نفسه ملف **ثنائي** (bytecode مُصرَّف)
+> يتطلب اتصال إنترنت أو تثبيت Gradle محليًا لتوليده — تعذّر إنشاؤه في هذه البيئة.
+> الحل بأي من الطريقتين:
+> - افتح المشروع في **Android Studio** مباشرة؛ يقوم تلقائيًا بتوليد الملف عند أول مزامنة (Sync).
+> - أو نفّذ يدويًا (بوجود Gradle مثبت): `gradle wrapper --gradle-version 8.7`
+>
+> ملاحظة: الـ CI (`build.yml`) **لا يعتمد على gradlew إطلاقًا** — يستخدم
+> `gradle/actions/setup-gradle` لتثبيت Gradle مباشرة، لذا يعمل البناء التلقائي
+> بشكل طبيعي حتى بدون هذا الملف.
+
+### 4) توقيع حقيقي لنسخة Release
+- `app/build.gradle.kts`: `signingConfigs.release` يقرأ من متغيرات البيئة
+  (`OPOU_KEYSTORE_PATH`, `OPOU_KEYSTORE_PASSWORD`, `OPOU_KEY_ALIAS`, `OPOU_KEY_PASSWORD`)
+  فقط عند توفرها؛ وإلا يُستخدم توقيع `debug` تلقائيًا لبناء محلي/تجريبي آمن.
+- `.github/workflows/build.yml`: خطوة جديدة تفكّ تشفير Secret باسم
+  `OPOU_KEYSTORE_BASE64` (ملف keystore بصيغة Base64) إلى ملف مؤقت، وتمرر بقية
+  الأسرار (`OPOU_KEYSTORE_PASSWORD`, `OPOU_KEY_ALIAS`, `OPOU_KEY_PASSWORD`) كمتغيرات بيئة.
+
+**لإعداد التوقيع الحقيقي في مستودعك:**
+```bash
+# 1) توليد keystore حقيقي (مرة واحدة فقط، احتفظ به في مكان آمن جدًا)
+keytool -genkeypair -v -keystore opou-release.keystore \
+  -alias opou -keyalg RSA -keysize 2048 -validity 10000
+
+# 2) تحويله إلى Base64 لوضعه كـ GitHub Secret
+base64 -w0 opou-release.keystore > opou-release.b64
+```
+ثم أضف في إعدادات GitHub → Secrets and variables → Actions:
+`OPOU_KEYSTORE_BASE64`, `OPOU_KEYSTORE_PASSWORD`, `OPOU_KEY_ALIAS`, `OPOU_KEY_PASSWORD`.
+
+### 5) تحقق فعلي من Firebase ID Token في PHP
+`server/php/firebase_auth.php` — تحقق كامل وحقيقي (بدون أي مكتبة Composer خارجية،
+فقط `curl` و `openssl` المدمجتان في PHP):
+- التحقق من توقيع JWT (RS256) عبر شهادات Google الرسمية (مع تخزين مؤقت لها).
+- التحقق من `iss` و `aud` مطابقين لمشروع `openou`.
+- التحقق من `exp`/`iat`/`auth_time` بمنطق زمني صحيح.
+- استخراج `uid` حقيقي وموثّق من الحقل `sub`.
+
+كل نقاط النهاية (`upload_avatar.php`, `base64_image.php`, `notify.php`) تستخدم الآن
+`require_bearer_token()` المحدَّثة، والتي **ترفض أي رمز غير موقّع بشكل صحيح** بدل
+الاكتفاء بالتحقق من وجود Header فقط كما كان سابقًا.
+
+### إصلاح مشكلة CI: "google-services.json is missing"
+حسب السجل المرفق (`logs_88446634056.zip`)، فشل البناء لأن `app/google-services.json`
+غير موجود في مستودع GitHub الفعلي (رغم وجوده في هذا الأرشيف). تم تحديث خطوة
+"Restore google-services.json" في الـ workflow لتفشل برسالة عربية واضحة فورًا
+بدل الانتظار حتى خطوة البناء، وتوضّح الحل: إمّا commit الملف نفسه، أو إضافة
+قيمته كـ Secret باسم `GOOGLE_SERVICES_JSON`.
+
+
+
+## ما يتبقّى (اختياري / تحسينات إضافية)
+
+- توليد `gradle-wrapper.jar` الثنائي فعليًا (يحدث تلقائيًا عند فتح المشروع في Android Studio).
+- اختبارات آلية (Unit/UI Tests) لمنطق الشعبية والتفاعلات.
+- ترقيم صفحات (Pagination) للتغذية عند نمو عدد الفقرات بشكل كبير جدًا.
+- Cloud Functions اختيارية لإرسال إشعارات FCM تلقائيًا عند تعليق/تيك جديد (بدل الاعتماد فقط على `notify.php` اليدوي).
 
 ---
 بُني هذا الهيكل كنقطة انطلاق احترافية وقابلة للتوسّع — وليس تطبيقًا جاهزًا للنشر
