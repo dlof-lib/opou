@@ -3,22 +3,30 @@ package com.OPEN.OU.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.PersonRemove
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Sell
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.OPEN.OU.R
@@ -29,6 +37,12 @@ import com.OPEN.OU.ui.components.ImagePickerButton
 import com.OPEN.OU.ui.theme.OpouBrandGradient
 import com.OPEN.OU.util.ImageCodec
 
+/**
+ * شاشة "الغرفة" (الملف الشخصي): بانر + صورة رمزية متراكبة (بنفس أسلوب EditRoomScreen)،
+ * بطاقة إحصائيات، وقسمان منظّمان بعنوانين واضحين: "لمحة" (تصنيف الغرفة) و"السيرة
+ * الذاتية". لصاحب الغرفة نفسه: زر تعديل بارز أعلى الشاشة (بجانب الإعدادات) وزر
+ * تعديل كامل أسفل البطاقة، مع دعوة صريحة لإضافة سيرة ذاتية إن كانت فارغة.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
@@ -43,6 +57,7 @@ fun ProfileScreen(
     val isTeking by viewModel.isTeking.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val myUid = remember { AuthRepository().currentUserId }
+    val isOwnProfile = myUid != null && myUid == uid
     var avatarError by remember { mutableStateOf<String?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -67,6 +82,14 @@ fun ProfileScreen(
                     }
                 },
                 actions = {
+                    if (isOwnProfile) {
+                        IconButton(onClick = onEditRoom) {
+                            Icon(
+                                Icons.Filled.Edit,
+                                contentDescription = stringResource(R.string.profile_edit_profile)
+                            )
+                        }
+                    }
                     if (onOpenSettings != null) {
                         IconButton(onClick = onOpenSettings) {
                             Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.settings_open))
@@ -88,126 +111,257 @@ fun ProfileScreen(
             Modifier
                 .padding(padding)
                 .fillMaxSize()
-                .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .verticalScroll(rememberScrollState())
         ) {
-            Box(
-                modifier = Modifier
-                    .size(140.dp)
-                    .background(
-                        brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
-                                Color.Transparent
+            // ── البانر ─────────────────────────────────────────────────────
+            Box(Modifier.fillMaxWidth().height(150.dp)) {
+                when {
+                    user.bannerBase64.isNotBlank() -> Base64Image(
+                        base64 = user.bannerBase64,
+                        modifier = Modifier.fillMaxSize(),
+                        cornerRadiusDp = 0
+                    )
+                    user.bannerUrl.isNotBlank() -> AsyncImage(
+                        model = user.bannerUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    else -> Box(Modifier.fillMaxSize().background(OpouBrandGradient))
+                }
+                // تظليل خفيف أسفل البانر حتى تبرز الصورة الرمزية والاسم فوقه بوضوح
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                        .height(56.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.28f))
                             )
                         )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                val avatarModifier = Modifier
-                    .size(96.dp)
-                    .clip(CircleShape)
-                    .border(3.dp, OpouBrandGradient, CircleShape)
-                    .padding(3.dp)
-                    .clip(CircleShape)
-
-                if (user.avatarBase64.isNotBlank()) {
-                    Base64Image(base64 = user.avatarBase64, modifier = avatarModifier, cornerRadiusDp = 24)
-                } else {
-                    AsyncImage(
-                        model = user.avatarUrl.ifBlank { null },
-                        contentDescription = null,
-                        modifier = avatarModifier.background(Color(0xFF0B7A4A))
-                    )
-                }
-
-                if (myUid == uid) {
-                    ImagePickerButton(
-                        profile = ImageCodec.ImageProfile.AVATAR,
-                        onImageReady = { encoded ->
-                            viewModel.updateAvatar(uid, encoded.base64)
-                        },
-                        onError = { avatarError = it },
-                        modifier = Modifier.align(Alignment.BottomEnd)
-                    )
-                }
-            }
-
-            avatarError?.let {
-                Spacer(Modifier.height(4.dp))
-                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
-            }
-
-            Spacer(Modifier.height(12.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                GradientText(text = user.username, style = MaterialTheme.typography.titleLarge)
-                if (user.verified) {
-                    Spacer(Modifier.width(6.dp))
-                    Icon(
-                        Icons.Filled.CheckCircle,
-                        contentDescription = "موثّق",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(6.dp))
-            AssistChip(
-                onClick = {},
-                label = { Text(user.communityName.ifBlank { stringResource(R.string.official_member_title) }) }
-            )
-
-            if (user.bio.isNotBlank()) {
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    user.bio,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            Spacer(Modifier.height(20.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-                StatColumn(user.paragraphsCount, stringResource(R.string.profile_paragraphs))
-                StatColumn(user.tekersCount, stringResource(R.string.profile_followers))
-                StatColumn(user.tekingCount, stringResource(R.string.profile_following))
-            }
+            // ── الصورة الرمزية + الاسم + التصنيف ─────────────────────────────
+            Column(Modifier.padding(horizontal = 20.dp)) {
+                Box(Modifier.offset(y = (-40).dp)) {
+                    val avatarModifier = Modifier
+                        .size(88.dp)
+                        .clip(CircleShape)
+                        .border(3.dp, MaterialTheme.colorScheme.background, CircleShape)
+                        .padding(3.dp)
+                        .clip(CircleShape)
 
-            Spacer(Modifier.height(24.dp))
-
-            if (myUid != null && myUid != uid) {
-                if (isTeking) {
-                    OutlinedButton(onClick = { viewModel.toggleTek(uid) }) {
-                        Icon(Icons.Filled.PersonRemove, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("إلغاء التيك")
+                    if (user.avatarBase64.isNotBlank()) {
+                        Base64Image(base64 = user.avatarBase64, modifier = avatarModifier, cornerRadiusDp = 24)
+                    } else {
+                        AsyncImage(
+                            model = user.avatarUrl.ifBlank { null },
+                            contentDescription = null,
+                            modifier = avatarModifier.background(Color(0xFF0B7A4A))
+                        )
                     }
-                } else {
-                    Button(
-                        onClick = { viewModel.toggleTek(uid) },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+
+                    if (isOwnProfile) {
+                        ImagePickerButton(
+                            profile = ImageCodec.ImageProfile.AVATAR,
+                            onImageReady = { encoded -> viewModel.updateAvatar(uid, encoded.base64) },
+                            onError = { avatarError = it },
+                            modifier = Modifier.align(Alignment.BottomEnd)
+                        )
+                    }
+                }
+
+                avatarError?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
+                    Spacer(Modifier.height(4.dp))
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    GradientText(text = user.username, style = MaterialTheme.typography.titleLarge)
+                    if (user.verified) {
+                        Spacer(Modifier.width(6.dp))
+                        Icon(
+                            Icons.Filled.CheckCircle,
+                            contentDescription = "موثّق",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(6.dp))
+                AssistChip(
+                    onClick = {},
+                    leadingIcon = { Icon(Icons.Filled.Sell, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                    label = { Text(user.communityName.ifBlank { stringResource(R.string.official_member_title) }) }
+                )
+
+                Spacer(Modifier.height(18.dp))
+
+                // ── بطاقة الإحصائيات ─────────────────────────────────────
+                Card(
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        Icon(Icons.Filled.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.action_tek))
+                        StatColumn(user.paragraphsCount, stringResource(R.string.profile_paragraphs))
+                        VerticalDivider()
+                        StatColumn(user.tekersCount, stringResource(R.string.profile_followers))
+                        VerticalDivider()
+                        StatColumn(user.tekingCount, stringResource(R.string.profile_following))
                     }
                 }
-            } else if (myUid == uid) {
-                OutlinedButton(onClick = onEditRoom) {
-                    Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.profile_edit))
+
+                Spacer(Modifier.height(16.dp))
+
+                // ── قسم "لمحة" ───────────────────────────────────────────
+                ProfileSectionCard(
+                    icon = Icons.Filled.Info,
+                    title = stringResource(R.string.profile_overview_title)
+                ) {
+                    Text(
+                        "${stringResource(R.string.profile_joined_as)} ${
+                            user.communityName.ifBlank { stringResource(R.string.official_member_title) }
+                        }",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
+
+                Spacer(Modifier.height(12.dp))
+
+                // ── قسم "السيرة الذاتية" ───────────────────────────────────
+                ProfileSectionCard(
+                    icon = Icons.Filled.Notes,
+                    title = stringResource(R.string.profile_bio_title),
+                    onClick = if (isOwnProfile && user.bio.isBlank()) onEditRoom else null
+                ) {
+                    if (user.bio.isNotBlank()) {
+                        Text(
+                            user.bio,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        Text(
+                            stringResource(
+                                if (isOwnProfile) R.string.profile_bio_empty_self
+                                else R.string.profile_bio_empty_other
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(22.dp))
+
+                // ── زر الإجراء الرئيسي ──────────────────────────────────
+                if (!isOwnProfile && myUid != null) {
+                    if (isTeking) {
+                        OutlinedButton(
+                            onClick = { viewModel.toggleTek(uid) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Filled.PersonRemove, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("إلغاء التيك")
+                        }
+                    } else {
+                        Button(
+                            onClick = { viewModel.toggleTek(uid) },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Filled.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.action_tek))
+                        }
+                    }
+                } else if (isOwnProfile) {
+                    Button(
+                        onClick = onEditRoom,
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.profile_edit_profile))
+                    }
+                }
+
+                Spacer(Modifier.height(24.dp))
             }
         }
     }
 }
 
 @Composable
+private fun VerticalDivider() {
+    Box(
+        Modifier
+            .height(34.dp)
+            .width(1.dp)
+            .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+    )
+}
+
+@Composable
 private fun StatColumn(count: Int, label: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(count.toString(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+/** بطاقة قسم موحّدة الشكل: أيقونة + عنوان في الأعلى، ثم محتوى حر بالأسفل. */
+@Composable
+private fun ProfileSectionCard(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    onClick: (() -> Unit)? = null,
+    content: @Composable () -> Unit
+) {
+    val shape = RoundedCornerShape(18.dp)
+    val colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+    val inner: @Composable () -> Unit = {
+        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            }
+            Spacer(Modifier.height(10.dp))
+            content()
+        }
+    }
+
+    if (onClick != null) {
+        Card(
+            onClick = onClick,
+            shape = shape,
+            colors = colors,
+            modifier = Modifier.fillMaxWidth()
+        ) { inner() }
+    } else {
+        Card(
+            shape = shape,
+            colors = colors,
+            modifier = Modifier.fillMaxWidth()
+        ) { inner() }
     }
 }
