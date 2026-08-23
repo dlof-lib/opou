@@ -9,7 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     json_response(['error' => 'الطريقة غير مسموحة'], 405);
 }
 
-require_bearer_token(); // TODO: تحقق فعلي من Firebase ID Token عبر مكتبة firebase/php-jwt
+require_bearer_token(); // التحقق الفعلي من توقيع Firebase ID Token (راجع firebase_auth.php)
 
 if (!isset($_FILES['image'])) {
     json_response(['error' => 'لم يتم إرسال صورة'], 400);
