@@ -1,0 +1,76 @@
+package com.OPEN.OU.ui.screens
+
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.OPEN.OU.data.model.Post
+import com.OPEN.OU.data.model.ReactionType
+import com.OPEN.OU.data.repository.AuthRepository
+import com.OPEN.OU.data.repository.PostRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+
+class FeedViewModel(
+    private val postRepo: PostRepository = PostRepository(),
+    private val authRepo: AuthRepository = AuthRepository()
+) : ViewModel() {
+
+    private val _feed = MutableStateFlow<List<Post>>(emptyList())
+    val feed: StateFlow<List<Post>> = _feed.asStateFlow()
+
+    private val _shaabiyat = MutableStateFlow<List<Post>>(emptyList())
+    val shaabiyat: StateFlow<List<Post>> = _shaabiyat.asStateFlow()
+
+    var isPosting by mutableStateOf(false); private set
+
+    init {
+        viewModelScope.launch {
+            postRepo.observeFeed().collect { _feed.value = it }
+        }
+        viewModelScope.launch {
+            postRepo.observeShaabiyat().collect { _shaabiyat.value = it }
+        }
+    }
+
+    fun publish(
+        content: String,
+        authorUsername: String,
+        authorAvatar: String,
+        authorAvatarBase64: String = "",
+        imageBase64: String = "",
+        onDone: () -> Unit
+    ) {
+        val uid = authRepo.currentUserId ?: return
+        if (content.isBlank() && imageBase64.isBlank()) return
+        viewModelScope.launch {
+            isPosting = true
+            postRepo.createPost(
+                Post(
+                    authorId = uid,
+                    authorUsername = authorUsername,
+                    authorAvatarUrl = authorAvatar,
+                    authorAvatarBase64 = authorAvatarBase64,
+                    content = content,
+                    imageBase64 = imageBase64
+                )
+            )
+            isPosting = false
+            onDone()
+        }
+    }
+
+    fun react(post: Post, type: ReactionType) {
+        val uid = authRepo.currentUserId ?: return
+        viewModelScope.launch { postRepo.react(post.postId, uid, type) }
+    }
+
+    fun tek(post: Post, tekingUsername: String, tekingAvatar: String) {
+        val uid = authRepo.currentUserId ?: return
+        if (uid == post.authorId) return // لا يمكن عمل تيك على فقرتك الخاصة
+        viewModelScope.launch { postRepo.tekPost(post, uid, tekingUsername, tekingAvatar) }
+    }
+}
