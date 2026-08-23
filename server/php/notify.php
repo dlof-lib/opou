@@ -1,7 +1,12 @@
 <?php
 // server/php/notify.php
 // نقطة نهاية بسيطة يستدعيها التطبيق (أو Cloud Function) لإرسال إشعار FCM
-// عند حدوث: تعليق جديد، تيك جديد (متابع)، أو تفاعل على فقرة.
+// عند حدوث: تعليق جديد، تيك جديد (متابع)، تفاعل على فقرة، أو بث فقرة عامة جديدة لكل المستخدمين.
+//
+// وجهة الإرسال واحدة من اثنتين (targetToken أو topic):
+// - targetToken: جهاز مستخدم واحد بعينه (تعليق/تيك/تفاعل — إشعار شخصي).
+// - topic      : كل الأجهزة المشتركة في موضوع بث معيّن (مثال: opou_new_paragraphs)،
+//                يصل لكل مستخدمي التطبيق دفعة واحدة دون الحاجة لتخزين توكنات فردية.
 
 require_once __DIR__ . '/config.php';
 
@@ -13,20 +18,34 @@ require_bearer_token();
 
 $input = json_decode(file_get_contents('php://input'), true);
 $targetToken = $input['targetToken'] ?? null;
+$topic = $input['topic'] ?? null;
 $title = $input['title'] ?? 'OPOU';
 $body = $input['body'] ?? '';
 
-if (!$targetToken || FCM_SERVER_KEY === '') {
-    json_response(['error' => 'بيانات ناقصة أو مفتاح FCM غير مهيأ'], 400);
+// بيانات إضافية (data payload) تُستخدم من جهة التطبيق لبناء إشعار غني
+// (نوع الإشعار، معرّف الفقرة، اسم الناشر، مقتطف من المحتوى...).
+$dataPayload = array_filter([
+    'type' => $input['type'] ?? null,
+    'postId' => $input['postId'] ?? null,
+    'authorUsername' => $input['authorUsername'] ?? null,
+    'preview' => $input['preview'] ?? null,
+], fn($value) => $value !== null);
+
+if ((!$targetToken && !$topic) || FCM_SERVER_KEY === '') {
+    json_response(['error' => 'بيانات ناقصة (targetToken أو topic) أو مفتاح FCM غير مهيأ'], 400);
 }
 
+// الوجهة: جهاز واحد بتوكنه مباشرة، أو موضوع بث بصيغة "/topics/الاسم"
+$destination = $targetToken ?: ('/topics/' . $topic);
+
 $payload = json_encode([
-    'to' => $targetToken,
+    'to' => $destination,
     'notification' => [
         'title' => $title,
         'body' => $body,
         'sound' => 'default',
     ],
+    'data' => $dataPayload,
 ]);
 
 $ch = curl_init('https://fcm.googleapis.com/fcm/send');
