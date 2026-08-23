@@ -1,12 +1,16 @@
 package com.OPEN.OU.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -19,6 +23,8 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.OPEN.OU.data.model.Post
 import com.OPEN.OU.data.model.ReactionType
+import com.OPEN.OU.ui.theme.OpouAccentGreen
+import com.OPEN.OU.ui.theme.OpouBrandGradient
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -35,44 +41,51 @@ fun PostCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
     ) {
         Column(Modifier.padding(14.dp)) {
 
             if (post.isTek) {
-                Text(
-                    text = "🔁 أعاد ${post.authorUsername} النشر عن ${post.originalAuthorUsername}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 6.dp)
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
+                    Icon(
+                        imageVector = Icons.Filled.Repeat,
+                        contentDescription = null,
+                        tint = OpouAccentGreen,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = "أعاد ${post.authorUsername} النشر عن ${post.originalAuthorUsername}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
+                val avatarModifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .border(2.dp, OpouBrandGradient, CircleShape)
+                    .padding(2.dp)
+                    .clip(CircleShape)
+                    .clickable { onOpenProfile(post.authorId) }
+
                 if (post.authorAvatarBase64.isNotBlank()) {
-                    com.OPEN.OU.ui.components.Base64Image(
-                        base64 = post.authorAvatarBase64,
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .clickable { onOpenProfile(post.authorId) }
-                    )
+                    Base64Image(base64 = post.authorAvatarBase64, modifier = avatarModifier, cornerRadiusDp = 21)
                 } else {
                     AsyncImage(
                         model = post.authorAvatarUrl.ifBlank { null },
                         contentDescription = null,
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF0B7A4A))
-                            .clickable { onOpenProfile(post.authorId) }
+                        modifier = avatarModifier.background(Color(0xFF0B7A4A))
                     )
                 }
                 Spacer(Modifier.width(10.dp))
                 Column {
-                    Text(post.authorUsername, fontWeight = FontWeight.SemiBold)
+                    Text(post.authorUsername, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
                     Text(
                         text = formatTime(post.createdAt),
                         style = MaterialTheme.typography.labelSmall,
@@ -87,9 +100,12 @@ fun PostCard(
                 Spacer(Modifier.height(10.dp))
             }
             if (post.imageBase64.isNotBlank()) {
-                com.OPEN.OU.ui.components.Base64Image(
+                Base64Image(
                     base64 = post.imageBase64,
-                    modifier = Modifier.fillMaxWidth().height(240.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(240.dp)
+                        .clip(RoundedCornerShape(16.dp))
                 )
                 Spacer(Modifier.height(10.dp))
             }
