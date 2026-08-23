@@ -30,6 +30,11 @@ class FeedViewModel(
 
     var isPosting by mutableStateOf(false); private set
 
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+    fun clearError() { _errorMessage.value = null }
+
     init {
         viewModelScope.launch {
             postRepo.observeFeed().collect { _feed.value = it }
@@ -56,29 +61,40 @@ class FeedViewModel(
         if (content.isBlank() && imageBase64.isBlank()) return
         viewModelScope.launch {
             isPosting = true
-            postRepo.createPost(
-                Post(
-                    authorId = uid,
-                    authorUsername = authorUsername,
-                    authorAvatarUrl = authorAvatar,
-                    authorAvatarBase64 = authorAvatarBase64,
-                    content = content,
-                    imageBase64 = imageBase64
+            runCatching {
+                postRepo.createPost(
+                    Post(
+                        authorId = uid,
+                        authorUsername = authorUsername,
+                        authorAvatarUrl = authorAvatar,
+                        authorAvatarBase64 = authorAvatarBase64,
+                        content = content,
+                        imageBase64 = imageBase64
+                    )
                 )
-            )
+            }.onSuccess {
+                onDone()
+            }.onFailure {
+                _errorMessage.value = it.message ?: "تعذّر نشر الفقرة، حاول مجددًا"
+            }
             isPosting = false
-            onDone()
         }
     }
 
     fun react(post: Post, type: ReactionType) {
         val uid = authRepo.currentUserId ?: return
-        viewModelScope.launch { postRepo.react(post.postId, uid, type) }
+        viewModelScope.launch {
+            runCatching { postRepo.react(post.postId, uid, type) }
+                .onFailure { _errorMessage.value = it.message ?: "تعذّر تسجيل تفاعلك" }
+        }
     }
 
-    fun tek(post: Post, tekingUsername: String, tekingAvatar: String) {
+    fun tek(post: Post, tekingUsername: String, tekingAvatar: String, tekingAvatarBase64: String = "") {
         val uid = authRepo.currentUserId ?: return
         if (uid == post.authorId) return // لا يمكن عمل تيك على فقرتك الخاصة
-        viewModelScope.launch { postRepo.tekPost(post, uid, tekingUsername, tekingAvatar) }
+        viewModelScope.launch {
+            runCatching { postRepo.tekPost(post, uid, tekingUsername, tekingAvatar, tekingAvatarBase64) }
+                .onFailure { _errorMessage.value = it.message ?: "تعذّر إعادة النشر (تيك)، حاول مجددًا" }
+        }
     }
 }
