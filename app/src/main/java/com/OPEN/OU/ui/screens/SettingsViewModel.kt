@@ -12,11 +12,19 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+/**
+ * ملاحظة مهمة: يجب أن يبقى المُنشئ الأساسي يقبل Application فقط، لأن مصنع
+ * ViewModel الافتراضي (المستخدم تلقائيًا عبر viewModel() في Compose) يبحث تحديدًا
+ * عن مُنشئ AndroidViewModel بمعامل واحد من نوع Application. وجود معاملات إضافية
+ * (حتى بقيم افتراضية) في المُنشئ الأساسي يمنع إيجاد هذا المُنشئ عبر الانعكاس
+ * (Reflection)، فيفشل إنشاء الشاشة بالكامل بمجرد الدخول إليها.
+ */
 class SettingsViewModel(
-    application: Application,
-    private val authRepo: AuthRepository = AuthRepository(),
-    private val userRepo: UserRepository = UserRepository()
+    application: Application
 ) : AndroidViewModel(application) {
+
+    private val authRepo: AuthRepository = AuthRepository()
+    private val userRepo: UserRepository = UserRepository()
 
     private val _language = MutableStateFlow(AppLanguage.ARABIC)
     val language: StateFlow<AppLanguage> = _language.asStateFlow()
