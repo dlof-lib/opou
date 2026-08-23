@@ -44,7 +44,7 @@ data class NotifyResponse(
 )
 
 /**
- * واجهة Retrofit التي تصف نقاط نهاية خادم أوبو المساعد بلغة PHP (server/php/*).
+ * واجهة Retrofit التي تصف نقاط نهاية خادم أوبو المساعد بلغة PHP (مجلد server/php).
  * هذه هي "الجسر" الفعلي بين تطبيق Kotlin وخادم PHP: كل استدعاء يُرفق رمز
  * Firebase ID Token الخاص بالمستخدم الحالي (Authorization: Bearer ...)، والذي
  * يتحقق منه firebase_auth.php فعليًا (توقيع RS256 + iss + aud + exp)، بدل
