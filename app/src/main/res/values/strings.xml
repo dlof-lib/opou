@@ -25,6 +25,12 @@
     <string name="profile_following">يتابع</string>
     <string name="profile_paragraphs">الفقرات</string>
     <string name="profile_edit">تعديل الغرفة</string>
+    <string name="profile_edit_profile">تعديل الملف الشخصي</string>
+    <string name="profile_overview_title">لمحة</string>
+    <string name="profile_bio_title">السيرة الذاتية</string>
+    <string name="profile_bio_empty_self">لم تُضف سيرة ذاتية بعد — اضغط لتعريف زوار غرفتك بك</string>
+    <string name="profile_bio_empty_other">لم يُضف صاحب الغرفة سيرة ذاتية بعد</string>
+    <string name="profile_joined_as">مصنّف كـ</string>
 
     <!-- التغذية / المنشورات -->
     <string name="feed_title">الفقرات</string>
