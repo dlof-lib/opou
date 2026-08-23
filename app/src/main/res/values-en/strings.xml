@@ -9,8 +9,13 @@
     <string name="login_no_account">No account? Create your room now</string>
     <string name="register_title">Create your OPOU room</string>
     <string name="register_username">Username</string>
-    <string name="register_community_name">Community name (e.g. YouTuber)</string>
+    <string name="register_community_name">Community name (e.g. Opouer, YouTuber, Designer)</string>
     <string name="register_button">Create Account</string>
+
+    <!-- The official title for OPOU platform creators/users, like "YouTuber" is to YouTube users -->
+    <string name="official_member_title">Opouer</string>
+    <string name="official_member_title_female">Opoueress</string>
+    <string name="official_member_title_plural">The Opouers</string>
     <string name="profile_room">Room</string>
     <string name="profile_followers">Tekers</string>
     <string name="profile_following">Following</string>
