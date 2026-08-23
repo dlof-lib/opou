@@ -32,10 +32,16 @@ android {
     signingConfigs {
         create("release") {
             // تُملأ عبر متغيرات بيئة CI (انظر workflow) — لا تضع مفاتيح حقيقية هنا
-            storeFile = file(System.getenv("OPOU_KEYSTORE_PATH") ?: "debug.keystore")
-            storePassword = System.getenv("OPOU_KEYSTORE_PASSWORD") ?: "android"
-            keyAlias = System.getenv("OPOU_KEY_ALIAS") ?: "androiddebugkey"
-            keyPassword = System.getenv("OPOU_KEY_PASSWORD") ?: "android"
+            val keystorePath = System.getenv("OPOU_KEYSTORE_PATH")
+            if (!keystorePath.isNullOrBlank()) {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("OPOU_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("OPOU_KEY_ALIAS")
+                keyPassword = System.getenv("OPOU_KEY_PASSWORD")
+            }
+            // ملاحظة: إن لم يتوفر OPOU_KEYSTORE_PATH (بناء محلي بدون سرّ حقيقي)،
+            // يبقى هذا الإعداد بلا storeFile، ويُستخدم عندها توقيع debug تلقائيًا
+            // عبر signingConfig = signingConfigs.getByName("debug") في buildTypes.release أدناه.
         }
     }
 
@@ -48,6 +54,14 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+
+            val hasRealKeystore = !System.getenv("OPOU_KEYSTORE_PATH").isNullOrBlank()
+            signingConfig = if (hasRealKeystore) {
+                signingConfigs.getByName("release")
+            } else {
+                // بناء محلي/تجريبي بدون أسرار CI: توقيع debug مؤقت حتى لا يفشل assembleRelease
+                signingConfigs.getByName("debug")
+            }
         }
     }
 
