@@ -14,8 +14,6 @@ import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -49,9 +47,11 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * بطاقة فقرة (منشور) بتصميم مرتّب واحترافي: رأس واضح (صورة + اسم + وقت)،
- * محتوى بمسافات متّسقة، صورة بزوايا دائرية عند وجودها، وشريط تفاعلات
- * مفصول بخط رفيع لإبراز البنية بصريًا دون إثقال الواجهة.
+ * بطاقة فقرة (منشور) بتصميم احترافي مُحسَّن: رأس مُتقن (صورة بإطار متدرّج +
+ * اسم + بيانات وصفية في سطر واحد مضغوط)، محتوى بمسافات ونمط طباعة مريحين
+ * للقراءة، وسائط (صور/روابط) معروضة بأسلوب بطاقات فرعية أنيقة، وشريط
+ * تفاعلات على هيئة "كبسولة" مفصولة بخطوط دقيقة لإبراز البنية دون إثقال
+ * الواجهة. التصميم موحّد ومتّسق مع هوية أخضر أوبو البصرية.
  */
 @Composable
 fun PostCard(
@@ -67,145 +67,158 @@ fun PostCard(
 
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
+        shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(
             containerColor = customBackground ?: MaterialTheme.colorScheme.surface
         ),
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
-            MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
+            MaterialTheme.colorScheme.outline.copy(alpha = 0.22f)
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Column(Modifier.padding(16.dp)) {
-
-            if (post.privacy != ParagraphPrivacy.PUBLIC.name || post.isScheduledForFuture()) {
-                ParagraphStatusRow(post)
-            }
+        Column {
 
             if (post.isTek) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 10.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(OpouAccentGreen.copy(alpha = 0.08f))
+                        .padding(horizontal = 18.dp, vertical = 8.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Repeat,
                         contentDescription = null,
                         tint = OpouAccentGreen,
-                        modifier = Modifier.size(14.dp)
+                        modifier = Modifier.size(13.dp)
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
                         text = "أعاد ${post.authorUsername} النشر عن ${post.originalAuthorUsername}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = OpouAccentGreen,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                val avatarModifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .border(2.dp, OpouBrandGradient, CircleShape)
-                    .padding(2.dp)
-                    .clip(CircleShape)
-                    .clickable { onOpenProfile(post.authorId) }
+            Column(Modifier.padding(18.dp)) {
 
-                if (post.authorAvatarBase64.isNotBlank()) {
-                    Base64Image(base64 = post.authorAvatarBase64, modifier = avatarModifier, cornerRadiusDp = 22)
-                } else {
-                    AsyncImage(
-                        model = post.authorAvatarUrl.ifBlank { null },
-                        contentDescription = null,
-                        modifier = avatarModifier.background(Color(0xFF0B7A4A))
-                    )
-                }
-                Spacer(Modifier.width(10.dp))
-                Column(Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            post.authorUsername,
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleSmall,
-                            modifier = Modifier.clickable { onOpenProfile(post.authorId) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val avatarModifier = Modifier
+                        .size(46.dp)
+                        .clip(CircleShape)
+                        .border(2.dp, OpouBrandGradient, CircleShape)
+                        .padding(2.5.dp)
+                        .clip(CircleShape)
+                        .clickable { onOpenProfile(post.authorId) }
+
+                    if (post.authorAvatarBase64.isNotBlank()) {
+                        Base64Image(base64 = post.authorAvatarBase64, modifier = avatarModifier, cornerRadiusDp = 23)
+                    } else {
+                        AsyncImage(
+                            model = post.authorAvatarUrl.ifBlank { null },
+                            contentDescription = null,
+                            modifier = avatarModifier.background(Color(0xFF0B7A4A))
                         )
-                        if (post.emoji.isNotBlank()) {
-                            Spacer(Modifier.width(6.dp))
-                            Text(post.emoji, style = MaterialTheme.typography.titleSmall)
-                        }
                     }
+                    Spacer(Modifier.width(11.dp))
+                    Column(Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                post.authorUsername,
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleSmall,
+                                modifier = Modifier.clickable { onOpenProfile(post.authorId) }
+                            )
+                            if (post.emoji.isNotBlank()) {
+                                Spacer(Modifier.width(6.dp))
+                                Text(post.emoji, style = MaterialTheme.typography.titleSmall)
+                            }
+                        }
+                        Spacer(Modifier.height(2.dp))
+                        MetaLine(post)
+                    }
+                }
+
+                if (post.content.isNotBlank()) {
+                    Spacer(Modifier.height(14.dp))
+                    ExpandableParagraphText(post)
+                }
+
+                if (post.customHtml.isNotBlank()) {
+                    Spacer(Modifier.height(8.dp))
                     Text(
-                        text = formatTime(post.createdAt),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = SafeHtml.render(post.customHtml),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        lineHeight = MaterialTheme.typography.bodyMedium.lineHeight
                     )
                 }
-            }
 
-            if (post.content.isNotBlank()) {
-                Spacer(Modifier.height(12.dp))
-                ExpandableParagraphText(post)
-            }
-
-            if (post.customHtml.isNotBlank()) {
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = SafeHtml.render(post.customHtml),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-
-            if (post.links.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp))
-                val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    post.links.filter { it.isNotBlank() }.forEach { link ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Filled.Link,
-                                contentDescription = null,
-                                tint = OpouAccentGreen,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                text = link,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = OpouAccentGreen,
-                                textDecoration = TextDecoration.Underline,
+                if (post.links.isNotEmpty()) {
+                    Spacer(Modifier.height(10.dp))
+                    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        post.links.filter { it.isNotBlank() }.forEach { link ->
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = OpouAccentGreen.copy(alpha = 0.08f),
                                 modifier = Modifier.clickable {
                                     val normalized = if (link.startsWith("http://") || link.startsWith("https://")) link else "https://$link"
                                     runCatching { uriHandler.openUri(normalized) }
                                 }
-                            )
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Link,
+                                        contentDescription = null,
+                                        tint = OpouAccentGreen,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(
+                                        text = link,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = OpouAccentGreen,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        textDecoration = TextDecoration.Underline
+                                    )
+                                }
+                            }
                         }
                     }
                 }
-            }
-            if (post.imageBase64.isNotBlank()) {
-                Spacer(Modifier.height(12.dp))
-                Surface(
-                    shape = MaterialTheme.shapes.medium,
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                ) {
-                    Base64Image(
-                        base64 = post.imageBase64,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(240.dp)
-                            .clip(MaterialTheme.shapes.medium)
-                    )
+                if (post.imageBase64.isNotBlank()) {
+                    Spacer(Modifier.height(14.dp))
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+                        )
+                    ) {
+                        Base64Image(
+                            base64 = post.imageBase64,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(240.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                        )
+                    }
                 }
             }
 
-            Spacer(Modifier.height(14.dp))
             androidx.compose.material3.HorizontalDivider(
-                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)
             )
-            Spacer(Modifier.height(4.dp))
 
             ReactionBar(
                 likesCount = post.likesCount,
@@ -215,7 +228,8 @@ fun PostCard(
                 currentReaction = currentReaction,
                 onReact = onReact,
                 onComment = onComment,
-                onTek = onTek
+                onTek = onTek,
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
             )
         }
     }
@@ -223,6 +237,74 @@ fun PostCard(
 
 private fun formatTime(millis: Long): String =
     SimpleDateFormat("d MMM yyyy - HH:mm", Locale("ar")).format(Date(millis))
+
+/**
+ * سطر البيانات الوصفية أسفل الاسم: الوقت، وعند الحاجة نقطة فاصلة تليها
+ * أيقونة وتسمية مضغوطة للخصوصية و/أو الجدولة — بدل صفّ شرائح منفصل يُثقل
+ * الرأس. يحافظ على واجهة نظيفة بسطر واحد قدر الإمكان.
+ */
+@Composable
+private fun MetaLine(post: Post) {
+    val privacy = ParagraphPrivacy.fromValue(post.privacy)
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = formatTime(post.createdAt),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        if (privacy != ParagraphPrivacy.PUBLIC) {
+            val (icon, label) = when (privacy) {
+                ParagraphPrivacy.PRIVATE -> Icons.Filled.Lock to "خاص"
+                ParagraphPrivacy.LIMITED -> Icons.Filled.People to "محدود"
+                ParagraphPrivacy.CUSTOM -> Icons.Filled.Tune to "مخصّص"
+                else -> Icons.Filled.Public to "عام"
+            }
+            Dot()
+            Icon(
+                icon,
+                contentDescription = label,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(11.dp)
+            )
+            Spacer(Modifier.width(3.dp))
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        if (post.isScheduledForFuture()) {
+            Dot()
+            Icon(
+                Icons.Filled.Schedule,
+                contentDescription = null,
+                tint = OpouAccentGreen,
+                modifier = Modifier.size(11.dp)
+            )
+            Spacer(Modifier.width(3.dp))
+            Text(
+                "ستُنشر ${formatTime(post.scheduledAt ?: 0L)}",
+                style = MaterialTheme.typography.labelSmall,
+                color = OpouAccentGreen,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun Dot() {
+    Box(
+        modifier = Modifier
+            .padding(horizontal = 5.dp)
+            .size(3.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+    )
+}
 
 /**
  * محتوى الفقرة مع دعم التنسيق (لون/تعريض/تسطير/خلفية النص) وميزة "عرض المزيد" —
@@ -238,14 +320,15 @@ private fun ExpandableParagraphText(post: Post) {
     val textBg = post.textBackgroundColor.toColorOrNull()
     val textStyle = MaterialTheme.typography.bodyLarge.copy(
         fontWeight = if (post.textBold) FontWeight.Bold else FontWeight.Normal,
-        textDecoration = if (post.textUnderline) TextDecoration.Underline else TextDecoration.None
+        textDecoration = if (post.textUnderline) TextDecoration.Underline else TextDecoration.None,
+        lineHeight = MaterialTheme.typography.bodyLarge.lineHeight
     )
 
     Column(
         modifier = if (textBg != null) {
             Modifier
-                .background(textBg, shape = MaterialTheme.shapes.small)
-                .padding(8.dp)
+                .background(textBg, shape = RoundedCornerShape(10.dp))
+                .padding(10.dp)
         } else Modifier
     ) {
         Text(
@@ -262,57 +345,15 @@ private fun ExpandableParagraphText(post: Post) {
             TextButton(
                 onClick = { expanded = !expanded },
                 contentPadding = PaddingValues(0.dp),
-                modifier = Modifier.padding(top = 2.dp)
+                modifier = Modifier.padding(top = 4.dp)
             ) {
                 Text(
                     if (expanded) "عرض أقل" else "عرض المزيد",
                     style = MaterialTheme.typography.labelMedium,
                     color = OpouAccentGreen,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.Bold
                 )
             }
-        }
-    }
-}
-
-/** شريط صغير يوضّح حالة الفقرة: خصوصية غير عامة و/أو جدولة نشر مستقبلية */
-@Composable
-private fun ParagraphStatusRow(post: Post) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        modifier = Modifier.padding(bottom = 10.dp)
-    ) {
-        val privacy = ParagraphPrivacy.fromValue(post.privacy)
-        if (privacy != ParagraphPrivacy.PUBLIC) {
-            val (icon, label) = when (privacy) {
-                ParagraphPrivacy.PRIVATE -> Icons.Filled.Lock to "خاص"
-                ParagraphPrivacy.LIMITED -> Icons.Filled.People to "محدود (تيكرز فقط)"
-                ParagraphPrivacy.CUSTOM -> Icons.Filled.Tune to "مخصّص"
-                else -> Icons.Filled.Public to "عام"
-            }
-            AssistChip(
-                onClick = {},
-                label = { Text(label, style = MaterialTheme.typography.labelSmall) },
-                leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(14.dp)) },
-                colors = AssistChipDefaults.assistChipColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                )
-            )
-        }
-        if (post.isScheduledForFuture()) {
-            AssistChip(
-                onClick = {},
-                label = {
-                    Text(
-                        "ستُنشر في ${formatTime(post.scheduledAt ?: 0L)}",
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                },
-                leadingIcon = { Icon(Icons.Filled.Schedule, contentDescription = null, modifier = Modifier.size(14.dp)) },
-                colors = AssistChipDefaults.assistChipColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                )
-            )
         }
     }
 }
