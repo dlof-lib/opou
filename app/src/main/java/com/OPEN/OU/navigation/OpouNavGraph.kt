@@ -13,6 +13,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.OPEN.OU.data.model.Post
 import com.OPEN.OU.data.repository.AuthRepository
+import com.OPEN.OU.data.repository.UserRepository
 import com.OPEN.OU.ui.components.CommentsSheet
 import com.OPEN.OU.ui.screens.*
 
@@ -31,11 +32,24 @@ private object Routes {
 fun OpouNavGraph() {
     val navController = rememberNavController()
     val authRepo = remember { AuthRepository() }
+    val userRepo = remember { UserRepository() }
     val startDestination = if (authRepo.currentUserId != null) Routes.FEED else Routes.LOGIN
 
-    // بيانات جلسة مبسّطة للمستخدم الحالي (تُستبدل لاحقًا بمصدر حقيقي من /users/{uid})
-    var currentUsername by remember { mutableStateOf("مستخدم_أوبو") }
+    // بيانات المستخدم الحالي الحقيقية، تُقرأ فوريًا (Realtime) من /users/{uid}
+    var currentUsername by remember { mutableStateOf("") }
     var currentAvatar by remember { mutableStateOf("") }
+    var currentAvatarBase64 by remember { mutableStateOf("") }
+
+    LaunchedEffect(authRepo.currentUserId) {
+        val uid = authRepo.currentUserId ?: return@LaunchedEffect
+        userRepo.observeUser(uid).collect { user ->
+            if (user != null) {
+                currentUsername = user.username
+                currentAvatar = user.avatarUrl
+                currentAvatarBase64 = user.avatarBase64
+            }
+        }
+    }
 
     var activeCommentsPost by remember { mutableStateOf<Post?>(null) }
 
@@ -73,6 +87,7 @@ fun OpouNavGraph() {
                 viewModel = vm,
                 currentUsername = currentUsername,
                 currentAvatar = currentAvatar,
+                currentAvatarBase64 = currentAvatarBase64,
                 onOpenProfile = { uid -> navController.navigate(Routes.profile(uid)) },
                 onOpenComments = { post -> activeCommentsPost = post },
                 onCreatePost = { navController.navigate(Routes.CREATE_POST) }
@@ -96,6 +111,7 @@ fun OpouNavGraph() {
                 viewModel = vm,
                 currentUsername = currentUsername,
                 currentAvatar = currentAvatar,
+                currentAvatarBase64 = currentAvatarBase64,
                 onDone = { navController.popBackStack() },
                 onBack = { navController.popBackStack() }
             )
