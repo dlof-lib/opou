@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.OPEN.OU.data.model.User
 import com.OPEN.OU.data.repository.AuthRepository
 import com.OPEN.OU.data.repository.UserRepository
+import com.OPEN.OU.network.PhpBridgeRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,7 +13,8 @@ import kotlinx.coroutines.launch
 
 class ProfileViewModel(
     private val userRepo: UserRepository = UserRepository(),
-    private val authRepo: AuthRepository = AuthRepository()
+    private val authRepo: AuthRepository = AuthRepository(),
+    private val phpBridge: PhpBridgeRepository = PhpBridgeRepository()
 ) : ViewModel() {
 
     private val _room = MutableStateFlow<User?>(null)
@@ -46,12 +48,31 @@ class ProfileViewModel(
             val goingToTek = !_isTeking.value
             _isTeking.value = goingToTek
             try {
-                if (goingToTek) userRepo.tek(myUid, tekerId) else userRepo.unTek(myUid, tekerId)
+                if (goingToTek) {
+                    userRepo.tek(myUid, tekerId)
+                    notifyNewTekerBestEffort(tekerId)
+                } else {
+                    userRepo.unTek(myUid, tekerId)
+                }
             } catch (e: Exception) {
                 // لا نُسقط التطبيق أبدًا بسبب خطأ شبكة/صلاحيات — نتراجع ونعرض رسالة بدلًا من ذلك
                 _isTeking.value = !goingToTek
                 _errorMessage.value = e.message ?: "تعذّر إتمام العملية، حاول مجددًا"
             }
+        }
+    }
+
+    /** إشعار PHP + FCM لمستخدم بأن أحدهم بدأ متابعته (تيك جديد) — Best-effort بالكامل. */
+    private suspend fun notifyNewTekerBestEffort(tekerId: String) {
+        runCatching {
+            val myUid = authRepo.currentUserId ?: return
+            val me = userRepo.getUser(myUid) ?: return
+            val target = userRepo.getUser(tekerId) ?: return
+            phpBridge.notifyBestEffort(
+                targetFcmToken = target.fcmToken,
+                title = "متابع جديد على أوبو",
+                body = "${me.username} بدأ متابعتك (تيك)"
+            )
         }
     }
 
