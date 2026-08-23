@@ -9,6 +9,7 @@ import com.OPEN.OU.data.model.Post
 import com.OPEN.OU.data.model.ReactionType
 import com.OPEN.OU.data.repository.AuthRepository
 import com.OPEN.OU.data.repository.PostRepository
+import com.OPEN.OU.data.repository.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,7 +17,8 @@ import kotlinx.coroutines.launch
 
 class FeedViewModel(
     private val postRepo: PostRepository = PostRepository(),
-    private val authRepo: AuthRepository = AuthRepository()
+    private val authRepo: AuthRepository = AuthRepository(),
+    private val userRepo: UserRepository = UserRepository()
 ) : ViewModel() {
 
     private val _feed = MutableStateFlow<List<Post>>(emptyList())
@@ -36,15 +38,20 @@ class FeedViewModel(
     fun clearError() { _errorMessage.value = null }
 
     init {
+        val uid = authRepo.currentUserId
         viewModelScope.launch {
-            postRepo.observeFeed().collect { _feed.value = it }
+            // نجلب "من يتابعهم" المستخدم الحالي مرة واحدة لتطبيق خصوصية "محدود" (LIMITED) على فقرات التغذية
+            val followingIds = uid?.let { runCatching { userRepo.getTekingIds(it).toSet() }.getOrDefault(emptySet()) } ?: emptySet()
+            launch {
+                postRepo.observeFeed(viewerId = uid, viewerFollowingIds = followingIds).collect { _feed.value = it }
+            }
+            launch {
+                postRepo.observeShaabiyat(viewerId = uid, viewerFollowingIds = followingIds).collect { _shaabiyat.value = it }
+            }
         }
-        viewModelScope.launch {
-            postRepo.observeShaabiyat().collect { _shaabiyat.value = it }
-        }
-        authRepo.currentUserId?.let { uid ->
+        uid?.let {
             viewModelScope.launch {
-                postRepo.observeMyReactions(uid).collect { _myReactions.value = it }
+                postRepo.observeMyReactions(it).collect { reactions -> _myReactions.value = reactions }
             }
         }
     }
@@ -55,10 +62,23 @@ class FeedViewModel(
         authorAvatar: String,
         authorAvatarBase64: String = "",
         imageBase64: String = "",
+        backgroundColor: String = "",
+        emoji: String = "",
+        textColor: String = "",
+        textBold: Boolean = false,
+        textUnderline: Boolean = false,
+        textBackgroundColor: String = "",
+        links: List<String> = emptyList(),
+        customHtml: String = "",
+        privacy: String = "PUBLIC",
+        allowedViewerIds: List<String> = emptyList(),
+        scheduledAt: Long? = null,
         onDone: () -> Unit
     ) {
         val uid = authRepo.currentUserId ?: return
         if (content.isBlank() && imageBase64.isBlank()) return
+        // القيمة الآمنة النهائية للإيموجي — تتجاهل أي قيمة خارج المجموعة المتاحة حاليًا (الميزة قيد التطوير)
+        val safeEmoji = if (com.OPEN.OU.data.model.ParagraphEmoji.isValid(emoji)) emoji else ""
         viewModelScope.launch {
             isPosting = true
             runCatching {
@@ -69,7 +89,18 @@ class FeedViewModel(
                         authorAvatarUrl = authorAvatar,
                         authorAvatarBase64 = authorAvatarBase64,
                         content = content,
-                        imageBase64 = imageBase64
+                        imageBase64 = imageBase64,
+                        backgroundColor = backgroundColor,
+                        emoji = safeEmoji,
+                        textColor = textColor,
+                        textBold = textBold,
+                        textUnderline = textUnderline,
+                        textBackgroundColor = textBackgroundColor,
+                        links = links,
+                        customHtml = customHtml,
+                        privacy = privacy,
+                        allowedViewerIds = allowedViewerIds,
+                        scheduledAt = scheduledAt
                     )
                 )
             }.onSuccess {
