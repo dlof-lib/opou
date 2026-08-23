@@ -88,7 +88,14 @@
         ".read": true,
         ".indexOn": ["createdAt"],
         "$commentId": {
-          ".write": "auth != null && (!data.exists() || data.child('authorId').val() === auth.uid)"
+          ".write": "auth != null && (!data.exists() || data.child('authorId').val() === auth.uid)",
+
+          "authorAvatarBase64": {
+            ".validate": "newData.isString() && newData.val().length <= 300000"
+          },
+          "content": {
+            ".validate": "newData.isString() && newData.val().length <= 5000"
+          }
         }
       }
     },
