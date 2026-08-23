@@ -22,6 +22,7 @@ class PostRepository(
     private val commentsRef get() = db.getReference(FirebasePaths.COMMENTS)
     private val reactionsRef get() = db.getReference(FirebasePaths.REACTIONS)
     private val usersRef get() = db.getReference(FirebasePaths.USERS)
+    private val userReactionsRef get() = db.getReference(FirebasePaths.USER_REACTIONS)
 
     /** الحد الأقصى الآمن لحجم أي حقل نصي واحد داخل عقدة Realtime Database (بايت تقريبي). */
     private val MAX_SAFE_FIELD_BYTES = 900_000
@@ -109,13 +110,49 @@ class PostRepository(
             ReactionType.NONE -> {}
         }
 
+        val userReactionRef = userReactionsRef.child(uid).child(postId)
         when (newType) {
-            ReactionType.LIKE -> { ref.setValue("LIKE").await(); adjustCount(postId, "likesCount", 1) }
-            ReactionType.DISLIKE -> { ref.setValue("DISLIKE").await(); adjustCount(postId, "dislikesCount", 1) }
-            ReactionType.NONE -> ref.removeValue().await()
+            ReactionType.LIKE -> {
+                ref.setValue("LIKE").await()
+                userReactionRef.setValue("LIKE").await()
+                adjustCount(postId, "likesCount", 1)
+            }
+            ReactionType.DISLIKE -> {
+                ref.setValue("DISLIKE").await()
+                userReactionRef.setValue("DISLIKE").await()
+                adjustCount(postId, "dislikesCount", 1)
+            }
+            ReactionType.NONE -> {
+                ref.removeValue().await()
+                userReactionRef.removeValue().await()
+            }
         }
 
         recomputeShaabiya(postId)
+    }
+
+    /**
+     * يراقب فوريًا (Realtime) خريطة تفاعلات المستخدم الحالي على كل الفقرات: postId -> ReactionType.
+     * تُستخدم في FeedScreen لتلوين زر ⭐/💔 الصحيح لكل فقرة دون طلب شبكة إضافي لكل عنصر.
+     */
+    fun observeMyReactions(uid: String): Flow<Map<String, ReactionType>> = callbackFlow {
+        val ref = userReactionsRef.child(uid)
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val map = snapshot.children.associate { child ->
+                    val type = when (child.getValue(String::class.java)) {
+                        "LIKE" -> ReactionType.LIKE
+                        "DISLIKE" -> ReactionType.DISLIKE
+                        else -> ReactionType.NONE
+                    }
+                    child.key.orEmpty() to type
+                }
+                trySend(map)
+            }
+            override fun onCancelled(error: DatabaseError) { close(error.toException()) }
+        }
+        ref.addValueEventListener(listener)
+        awaitClose { ref.removeEventListener(listener) }
     }
 
     private suspend fun adjustCount(postId: String, field: String, delta: Int) {
