@@ -1,0 +1,22 @@
+package com.OPEN.OU.data.repository
+
+/**
+ * هيكل قاعدة بيانات OPOU على Firebase Realtime Database:
+ *
+ * /users/{uid}                          -> User
+ * /posts/{postId}                       -> Post
+ * /comments/{postId}/{commentId}        -> Comment
+ * /reactions/{postId}/{uid}             -> "LIKE" | "DISLIKE"
+ * /teking/{uid}/{tekerId}               -> true       (من يتابعهم المستخدم uid)
+ * /tekers/{uid}/{tekingId}              -> true       (من يتابع المستخدم uid)
+ * /usernames/{username}                 -> uid         (فهرسة لأسماء المستخدمين الفريدة)
+ */
+object FirebasePaths {
+    const val USERS = "users"
+    const val POSTS = "posts"
+    const val COMMENTS = "comments"
+    const val REACTIONS = "reactions"
+    const val TEKING = "teking"
+    const val TEKERS = "tekers"
+    const val USERNAMES = "usernames"
+}
