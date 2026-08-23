@@ -28,4 +28,37 @@
     <string name="write_comment_hint">Write a comment…</string>
     <string name="shaabiyat_title">Shaabiyat</string>
     <string name="shaabiyat_subtitle">Trending now</string>
+
+    <!-- Bottom navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_tekers">Tekers</string>
+    <string name="nav_account">Account</string>
+
+    <!-- Tekers screen (followers/following) -->
+    <string name="tekers_title">Tekers</string>
+    <string name="tekers_tab_tekers">Followers</string>
+    <string name="tekers_tab_teking">Following</string>
+    <string name="tekers_empty">No one here yet</string>
+    <string name="tekers_login_required">Log in to view Tekers</string>
+
+    <!-- Settings & privacy -->
+    <string name="settings_title">Settings &amp; Privacy</string>
+    <string name="settings_open">Settings &amp; Privacy</string>
+    <string name="settings_section_general">General</string>
+    <string name="settings_language">App language</string>
+    <string name="settings_language_hint">Choose your preferred app language</string>
+    <string name="settings_section_privacy">Privacy</string>
+    <string name="privacy_policy_title">Privacy Policy</string>
+    <string name="privacy_policy_body">We respect your privacy on OPOU. Your account data (username, avatar, posts, comments, reactions) is stored in a secure Firebase database to enable a real-time experience between users. We never share your data with third parties for advertising purposes. You can delete your account or content at any time. Your notification token (FCM) is used exclusively to deliver in-app notifications (new comment, new follower) through our helper server, and for no other purpose.</string>
+    <string name="settings_section_account">Account</string>
+    <string name="settings_logout">Log out</string>
+    <string name="settings_logout_confirm">Do you want to log out of your account?</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_confirm">Confirm</string>
+
+    <!-- General -->
+    <string name="action_back">Back</string>
+    <string name="no_posts_yet">No paragraphs yet — be the first to post!</string>
+    <string name="no_trending_yet">No trending paragraphs yet</string>
+    <string name="no_comments_yet">No comments yet — be the first to comment</string>
 </resources>
