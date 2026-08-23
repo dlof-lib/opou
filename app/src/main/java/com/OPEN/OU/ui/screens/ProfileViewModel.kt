@@ -21,6 +21,11 @@ class ProfileViewModel(
     private val _isTeking = MutableStateFlow(false)
     val isTeking: StateFlow<Boolean> = _isTeking.asStateFlow()
 
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+    fun clearError() { _errorMessage.value = null }
+
     fun load(uid: String) {
         viewModelScope.launch {
             userRepo.observeUser(uid).collect { _room.value = it }
@@ -37,36 +42,47 @@ class ProfileViewModel(
         val myUid = authRepo.currentUserId ?: return
         if (myUid == tekerId) return
         viewModelScope.launch {
-            if (_isTeking.value) {
-                userRepo.unTek(myUid, tekerId)
-                _isTeking.value = false
-            } else {
-                userRepo.tek(myUid, tekerId)
-                _isTeking.value = true
+            // تحديث متفائل فورًا لواجهة سلسة، مع تراجع تلقائي إن فشل الطلب
+            val goingToTek = !_isTeking.value
+            _isTeking.value = goingToTek
+            try {
+                if (goingToTek) userRepo.tek(myUid, tekerId) else userRepo.unTek(myUid, tekerId)
+            } catch (e: Exception) {
+                // لا نُسقط التطبيق أبدًا بسبب خطأ شبكة/صلاحيات — نتراجع ونعرض رسالة بدلًا من ذلك
+                _isTeking.value = !goingToTek
+                _errorMessage.value = e.message ?: "تعذّر إتمام العملية، حاول مجددًا"
             }
         }
     }
 
     /** يحدّث الصورة الرمزية للغرفة فور جاهزيتها من ImageCodec (مضغوطة ومُرمّزة). */
     fun updateAvatar(uid: String, base64: String) {
-        viewModelScope.launch { userRepo.updateAvatar(uid, base64) }
+        viewModelScope.launch {
+            runCatching { userRepo.updateAvatar(uid, base64) }
+                .onFailure { _errorMessage.value = it.message ?: "تعذّر حفظ الصورة الرمزية" }
+        }
     }
 
     /** يحدّث صورة بانر الغرفة. */
     fun updateBanner(uid: String, base64: String) {
-        viewModelScope.launch { userRepo.updateBanner(uid, base64) }
+        viewModelScope.launch {
+            runCatching { userRepo.updateBanner(uid, base64) }
+                .onFailure { _errorMessage.value = it.message ?: "تعذّر حفظ صورة البانر" }
+        }
     }
 
     /** يحدّث اسم المجتمع والسيرة الذاتية معًا في تحديث واحد (Realtime). */
     fun updateRoomInfo(uid: String, communityName: String, bio: String) {
         viewModelScope.launch {
-            userRepo.updateRoom(
-                uid,
-                mapOf(
-                    "communityName" to communityName,
-                    "bio" to bio
+            runCatching {
+                userRepo.updateRoom(
+                    uid,
+                    mapOf(
+                        "communityName" to communityName,
+                        "bio" to bio
+                    )
                 )
-            )
+            }.onFailure { _errorMessage.value = it.message ?: "تعذّر حفظ بيانات الغرفة" }
         }
     }
 }
