@@ -18,6 +18,7 @@ fun CreatePostScreen(
     viewModel: FeedViewModel,
     currentUsername: String,
     currentAvatar: String,
+    currentAvatarBase64: String = "",
     onDone: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -44,6 +45,7 @@ fun CreatePostScreen(
                                 content = text,
                                 authorUsername = currentUsername,
                                 authorAvatar = currentAvatar,
+                                authorAvatarBase64 = currentAvatarBase64,
                                 imageBase64 = attachedImage?.base64.orEmpty(),
                                 onDone = onDone
                             )
