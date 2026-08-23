@@ -36,4 +36,37 @@
     <!-- شعبيات -->
     <string name="shaabiyat_title">الشعبيات</string>
     <string name="shaabiyat_subtitle">الأكثر شعبية الآن</string>
+
+    <!-- التنقّل السفلي -->
+    <string name="nav_home">الرئيسية</string>
+    <string name="nav_tekers">التيكرز</string>
+    <string name="nav_account">الحساب</string>
+
+    <!-- شاشة التيكرز (المتابعون/المتابَعون) -->
+    <string name="tekers_title">التيكرز</string>
+    <string name="tekers_tab_tekers">متابعوك</string>
+    <string name="tekers_tab_teking">تتابعهم</string>
+    <string name="tekers_empty">لا يوجد أحد هنا بعد</string>
+    <string name="tekers_login_required">سجّل الدخول لعرض التيكرز</string>
+
+    <!-- الإعدادات والخصوصية -->
+    <string name="settings_title">الإعدادات والخصوصية</string>
+    <string name="settings_open">الإعدادات والخصوصية</string>
+    <string name="settings_section_general">عام</string>
+    <string name="settings_language">لغة التطبيق</string>
+    <string name="settings_language_hint">اختر اللغة التي تفضّل عرض التطبيق بها</string>
+    <string name="settings_section_privacy">الخصوصية</string>
+    <string name="privacy_policy_title">سياسة الخصوصية</string>
+    <string name="privacy_policy_body">نحترم خصوصيتك في أوبو. نقوم بتخزين بيانات حسابك (اسم المستخدم، الصورة الرمزية، الفقرات، التعليقات، التفاعلات) في قاعدة بيانات Firebase الآمنة لإتاحة تجربة فورية بين المستخدمين. لا نشارك بياناتك مع أي طرف ثالث لأغراض إعلانية. يمكنك حذف حسابك أو محتواك في أي وقت. رمز إشعاراتك (FCM) يُستخدم حصريًا لإرسال إشعارات داخل التطبيق (تعليق جديد، متابع جديد) عبر خادمنا المساعد، ولا يُستخدم لأي غرض آخر.</string>
+    <string name="settings_section_account">الحساب</string>
+    <string name="settings_logout">تسجيل الخروج</string>
+    <string name="settings_logout_confirm">هل تريد تسجيل الخروج من حسابك؟</string>
+    <string name="action_cancel">إلغاء</string>
+    <string name="action_confirm">تأكيد</string>
+
+    <!-- عام -->
+    <string name="action_back">رجوع</string>
+    <string name="no_posts_yet">لا توجد فقرات بعد — كن أول من ينشر!</string>
+    <string name="no_trending_yet">لا توجد فقرات شعبية بعد</string>
+    <string name="no_comments_yet">لا توجد تعليقات بعد — كن أول من يعلّق</string>
 </resources>
