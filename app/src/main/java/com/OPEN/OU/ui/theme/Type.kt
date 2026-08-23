@@ -6,9 +6,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 val OpouTypography = Typography(
-    titleLarge = TextStyle(fontWeight = FontWeight.Bold, fontSize = 24.sp),
-    titleMedium = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 18.sp),
-    bodyLarge = TextStyle(fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 22.sp),
+    titleLarge = TextStyle(fontWeight = FontWeight.Black, fontSize = 26.sp, letterSpacing = 0.sp),
+    titleMedium = TextStyle(fontWeight = FontWeight.Bold, fontSize = 18.sp),
+    titleSmall = TextStyle(fontWeight = FontWeight.Bold, fontSize = 15.sp),
+    bodyLarge = TextStyle(fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 23.sp),
     bodyMedium = TextStyle(fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 20.sp),
-    labelSmall = TextStyle(fontWeight = FontWeight.Medium, fontSize = 12.sp)
+    labelLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 14.sp),
+    labelMedium = TextStyle(fontWeight = FontWeight.Medium, fontSize = 13.sp),
+    labelSmall = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
 )
