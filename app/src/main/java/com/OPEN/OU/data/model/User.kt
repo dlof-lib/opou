@@ -22,7 +22,12 @@ data class User(
     val tekingCount: Int = 0,         // عدد من يتابعهم المستخدم (تيكينغ)
     val shaabiyaScore: Long = 0L,     // مجموع نقاط الشعبية
 
-    val verified: Boolean = false
+    val verified: Boolean = false,
+
+    // رمز إشعارات FCM الحالي للمستخدم — يُستخدم من network/PhpApiClient لإرسال إشعار عبر notify.php
+    val fcmToken: String = "",
+    // لغة واجهة المستخدم المفضّلة، تُزامن مع util/LanguagePrefs المحلي (ar / en)
+    val language: String = "ar"
 )
 // ملاحظة: جميع الحقول لها قيم افتراضية، لذلك يتوفر تلقائيًا مُنشئ بلا معاملات
 // وهو ما يتطلبه Firebase Realtime Database لفك التسلسل (deserialization).
