@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OPOU</string>
+
+    <!-- تسجيل الدخول -->
+    <string name="login_title">مرحبًا بك في أوبو</string>
+    <string name="login_subtitle">منصتك للتعبير بحرية</string>
+    <string name="login_email">البريد الإلكتروني</string>
+    <string name="login_password">كلمة المرور</string>
+    <string name="login_button">تسجيل الدخول</string>
+    <string name="login_no_account">ليس لديك حساب؟ أنشئ غرفتك الآن</string>
+    <string name="register_title">أنشئ غرفتك في أوبو</string>
+    <string name="register_username">اسم المستخدم</string>
+    <string name="register_community_name">اسم المجتمع (مثل: يوتيوبر)</string>
+    <string name="register_button">إنشاء الحساب</string>
+
+    <!-- الملف الشخصي / الغرفة -->
+    <string name="profile_room">الغرفة</string>
+    <string name="profile_followers">التيكرز</string>
+    <string name="profile_following">يتابع</string>
+    <string name="profile_paragraphs">الفقرات</string>
+    <string name="profile_edit">تعديل الغرفة</string>
+
+    <!-- التغذية / المنشورات -->
+    <string name="feed_title">الفقرات</string>
+    <string name="new_paragraph_hint">عبّر عن رأيك بحرية…</string>
+    <string name="post_button">نشر</string>
+    <string name="reaction_like">أعجبني</string>
+    <string name="reaction_dislike">لم يعجبني</string>
+    <string name="action_comment">تعليق</string>
+    <string name="action_tek">تيك</string>
+    <string name="action_share">مشاركة</string>
+    <string name="comments_title">التعليقات</string>
+    <string name="write_comment_hint">اكتب تعليقًا…</string>
+
+    <!-- شعبيات -->
+    <string name="shaabiyat_title">الشعبيات</string>
+    <string name="shaabiyat_subtitle">الأكثر شعبية الآن</string>
+</resources>
