@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.OPEN.OU.R
 import com.OPEN.OU.data.model.Post
 import com.OPEN.OU.data.model.ReactionType
+import com.OPEN.OU.ui.components.GradientText
 import com.OPEN.OU.ui.components.PostCard
 import com.OPEN.OU.ui.theme.OpouBrandGradient
 
@@ -49,10 +50,9 @@ fun FeedScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        "OPOU",
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier
+                    GradientText(
+                        text = "OPOU",
+                        style = MaterialTheme.typography.titleLarge
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -69,7 +69,7 @@ fun FeedScreen(
                 Box(
                     modifier = Modifier
                         .size(56.dp)
-                        .background(OpouBrandGradient, shape = MaterialTheme.shapes.large),
+                        .background(OpouBrandGradient, shape = MaterialTheme.shapes.extraLarge),
                     contentAlignment = androidx.compose.ui.Alignment.Center
                 ) {
                     Icon(
