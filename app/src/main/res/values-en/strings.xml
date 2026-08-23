@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OPOU</string>
+    <string name="login_title">Welcome to OPOU</string>
+    <string name="login_subtitle">Your platform for free expression</string>
+    <string name="login_email">Email</string>
+    <string name="login_password">Password</string>
+    <string name="login_button">Log In</string>
+    <string name="login_no_account">No account? Create your room now</string>
+    <string name="register_title">Create your OPOU room</string>
+    <string name="register_username">Username</string>
+    <string name="register_community_name">Community name (e.g. YouTuber)</string>
+    <string name="register_button">Create Account</string>
+    <string name="profile_room">Room</string>
+    <string name="profile_followers">Tekers</string>
+    <string name="profile_following">Following</string>
+    <string name="profile_paragraphs">Paragraphs</string>
+    <string name="profile_edit">Edit Room</string>
+    <string name="feed_title">Paragraphs</string>
+    <string name="new_paragraph_hint">Express yourself freely…</string>
+    <string name="post_button">Post</string>
+    <string name="reaction_like">Like</string>
+    <string name="reaction_dislike">Dislike</string>
+    <string name="action_comment">Comment</string>
+    <string name="action_tek">Tek</string>
+    <string name="action_share">Share</string>
+    <string name="comments_title">Comments</string>
+    <string name="write_comment_hint">Write a comment…</string>
+    <string name="shaabiyat_title">Shaabiyat</string>
+    <string name="shaabiyat_subtitle">Trending now</string>
+</resources>
