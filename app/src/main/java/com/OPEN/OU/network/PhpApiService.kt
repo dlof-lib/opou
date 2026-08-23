@@ -7,21 +7,6 @@ import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.Part
 
-/** جسم طلب ضغط صورة Base64 عبر server/php/base64_image.php */
-data class Base64ImageRequest(val base64: String)
-
-/** استجابة ضغط الصورة القادمة من base64_image.php */
-data class Base64ImageResponse(
-    val success: Boolean = false,
-    val error: String? = null,
-    val base64: String? = null,
-    val mimeType: String? = null,
-    val width: Int? = null,
-    val height: Int? = null,
-    val byteSize: Int? = null,
-    val quality: Int? = null
-)
-
 /** استجابة رفع الصورة الرمزية عبر server/php/upload_avatar.php */
 data class UploadAvatarResponse(
     val success: Boolean = false,
@@ -59,6 +44,11 @@ data class NotifyResponse(
  * Firebase ID Token الخاص بالمستخدم الحالي (Authorization: Bearer ...)، والذي
  * يتحقق منه firebase_auth.php فعليًا (توقيع RS256 + iss + aud + exp)، بدل
  * الاعتماد فقط على قواعد Firebase من جهة العميل.
+ *
+ * ملاحظة: معالجة الصور (ترميز/فك ترميز/ضغط Base64) لم تعد تمر عبر PHP إطلاقًا؛
+ * أصبحت تعتمد بالكامل على الطبقة الأصلية Kotlin + C++ (راجع ImageCodec.kt،
+ * NativeBridge.kt، وapp/src/main/cpp/base64.cpp)، وبذلك أصبح هذا الخادم مسؤولاً
+ * فقط عن الإشعارات (notify.php) والرفع الاختياري لملف خام (upload_avatar.php).
  */
 interface PhpApiService {
 
@@ -68,13 +58,6 @@ interface PhpApiService {
         @Header("Authorization") bearerToken: String,
         @Body request: NotifyRequest
     ): NotifyResponse
-
-    /** يضغط صورة Base64 من جهة الخادم كطبقة تحقق/ضغط ثانية (Defense in Depth). */
-    @POST("server/php/base64_image.php")
-    suspend fun compressBase64Image(
-        @Header("Authorization") bearerToken: String,
-        @Body request: Base64ImageRequest
-    ): Base64ImageResponse
 
     /** يرفع صورة أفتار/بانر إلى الخادم (بديل اختياري عن التخزين المباشر Base64). */
     @Multipart
