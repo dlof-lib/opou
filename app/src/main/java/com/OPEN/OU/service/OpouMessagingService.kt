@@ -1,13 +1,8 @@
 package com.OPEN.OU.service
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.os.Build
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
-import com.OPEN.OU.R
 import com.OPEN.OU.data.repository.AuthRepository
 import com.OPEN.OU.data.repository.UserRepository
+import com.OPEN.OU.notifications.NotificationDisplay
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import kotlinx.coroutines.CoroutineScope
@@ -16,9 +11,13 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-private const val CHANNEL_ID = "opou_default_channel"
-
-/** يستقبل إشعارات أوبو: تعليق جديد، تيك جديد (متابع)، تفاعل على فقرة، إلخ. */
+/**
+ * يستقبل إشعارات أوبو ويوجّهها للتصميم الاحترافي المناسب في [NotificationDisplay]:
+ * - type = "new_paragraph" : فقرة عامة جديدة (بث لكل المستخدمين عبر FcmTopics.NEW_PARAGRAPHS).
+ * - غير ذلك (تعليق جديد / تيك جديد / تفاعل على فقرة) : إشعار تفاعل شخصي مباشر.
+ * (إشعارات "مقترحات لك" لا تمر من هنا؛ تُبنى وتُعرض محليًا بالكامل عبر SuggestionsWorker
+ * لأنها توصيات محسوبة على الجهاز ولا تحتاج شبكة FCM إطلاقًا.)
+ */
 class OpouMessagingService : FirebaseMessagingService() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -37,39 +36,18 @@ class OpouMessagingService : FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
-        val title = message.notification?.title ?: message.data["title"] ?: "OPOU"
-        val body = message.notification?.body ?: message.data["body"] ?: ""
-        showSystemNotification(title, body)
-    }
+        val data = message.data
+        val title = message.notification?.title ?: data["title"] ?: "OPOU"
+        val body = message.notification?.body ?: data["body"] ?: ""
 
-    private fun showSystemNotification(title: String, body: String) {
-        ensureChannel()
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle(title)
-            .setContentText(body)
-            .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .build()
-
-        runCatching {
-            NotificationManagerCompat.from(this)
-                .notify(System.currentTimeMillis().toInt(), notification)
-        }.onFailure { Timber.tag("FCM").w(it, "تعذّر عرض الإشعار (قد تكون صلاحية الإشعارات غير ممنوحة)") }
-    }
-
-    private fun ensureChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val manager = getSystemService(NotificationManager::class.java)
-            val existing = manager?.getNotificationChannel(CHANNEL_ID)
-            if (existing == null) {
-                val channel = NotificationChannel(
-                    CHANNEL_ID,
-                    "OPOU",
-                    NotificationManager.IMPORTANCE_DEFAULT
-                )
-                manager?.createNotificationChannel(channel)
-            }
+        when (data["type"]) {
+            "new_paragraph" -> NotificationDisplay.showNewParagraph(
+                context = this,
+                postId = data["postId"],
+                authorUsername = data["authorUsername"],
+                preview = data["preview"] ?: body
+            )
+            else -> NotificationDisplay.showInteraction(this, title, body)
         }
     }
 }
