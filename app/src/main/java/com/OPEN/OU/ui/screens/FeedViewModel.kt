@@ -25,6 +25,9 @@ class FeedViewModel(
     private val _shaabiyat = MutableStateFlow<List<Post>>(emptyList())
     val shaabiyat: StateFlow<List<Post>> = _shaabiyat.asStateFlow()
 
+    private val _myReactions = MutableStateFlow<Map<String, ReactionType>>(emptyMap())
+    val myReactions: StateFlow<Map<String, ReactionType>> = _myReactions.asStateFlow()
+
     var isPosting by mutableStateOf(false); private set
 
     init {
@@ -33,6 +36,11 @@ class FeedViewModel(
         }
         viewModelScope.launch {
             postRepo.observeShaabiyat().collect { _shaabiyat.value = it }
+        }
+        authRepo.currentUserId?.let { uid ->
+            viewModelScope.launch {
+                postRepo.observeMyReactions(uid).collect { _myReactions.value = it }
+            }
         }
     }
 
