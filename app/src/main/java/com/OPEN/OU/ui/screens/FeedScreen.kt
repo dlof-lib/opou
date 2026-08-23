@@ -28,6 +28,7 @@ fun FeedScreen(
     var tab by remember { mutableStateOf(0) }
     val feed by viewModel.feed.collectAsState()
     val shaabiyat by viewModel.shaabiyat.collectAsState()
+    val myReactions by viewModel.myReactions.collectAsState()
 
     Scaffold(
         topBar = {
@@ -54,7 +55,7 @@ fun FeedScreen(
                 items(list, key = { it.postId }) { post ->
                     PostCard(
                         post = post,
-                        currentReaction = ReactionType.NONE, // TODO: اربطها بحالة تفاعل المستخدم الفعلية من /reactions
+                        currentReaction = myReactions[post.postId] ?: ReactionType.NONE,
                         onReact = { type -> viewModel.react(post, type) },
                         onComment = { onOpenComments(post) },
                         onTek = { viewModel.tek(post, currentUsername, currentAvatar) },
