@@ -17,7 +17,9 @@ import java.util.concurrent.TimeUnit
  * نقطة الاتصال الوحيدة بين تطبيق Kotlin وخادم PHP المساعد (server/php).
  *
  * سابقًا لم يكن هناك أي رابط فعلي بين التطبيق وهذا الخادم رغم وجوده جاهزًا،
- * مما كان يترك مسارات مهمة (إشعارات FCM، تحقق ثانٍ من الصور) بلا استخدام.
+ * مما كان يترك مسارات مهمة (إشعارات FCM) بلا استخدام. معالجة الصور (Base64) لم
+ * تعد تمر عبر PHP إطلاقًا وأصبحت كاملة داخل التطبيق عبر Kotlin + C++ (JNI) —
+ * راجع util/ImageCodec.kt وutil/NativeBridge.kt وapp/src/main/cpp/base64.cpp.
  * هذا الملف يبني عميل Retrofit حقيقي، يُرفق دومًا Firebase ID Token الحالي،
  * ويعرض واجهة بسيطة (PhpBridgeRepository) يمكن لأي ViewModel استدعاؤها بأمان
  * (فشل الشبكة هنا لا يجب أبدًا أن يوقف تدفق Firebase الأساسي — لذلك هو Best-effort).
@@ -72,19 +74,6 @@ class PhpBridgeRepository(
         runCatching {
             service.notify(token, NotifyRequest(targetToken = targetFcmToken, title = title, body = body))
         }.onFailure { Timber.tag("PHP-API").w(it, "فشل إرسال إشعار عبر notify.php") }
-    }
-
-    /**
-     * يطلب من الخادم ضغط صورة Base64 كطبقة تحقق ثانية (Defense in Depth) فوق
-     * الضغط المحلي عبر ImageCodec.kt + base64.cpp. يعيد null بأمان عند أي فشل،
-     * وعندها يستمر التطبيق باستخدام النسخة المضغوطة محليًا دون انقطاع.
-     */
-    suspend fun compressServerSideOrNull(base64: String): Base64ImageResponse? {
-        val token = bearerTokenOrNull() ?: return null
-        return runCatching {
-            val response = service.compressBase64Image(token, Base64ImageRequest(base64))
-            if (response.success) response else null
-        }.onFailure { Timber.tag("PHP-API").w(it, "فشل الضغط عبر base64_image.php") }.getOrNull()
     }
 
     /**
