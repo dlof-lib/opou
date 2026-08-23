@@ -2,6 +2,8 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
+    id("com.google.firebase.firebase-perf")
 }
 
 android {
@@ -27,6 +29,10 @@ android {
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
         }
+
+        // عنوان خادم PHP المساعد (server/php) — عدّله ليطابق دومين الاستضافة الفعلي لديك.
+        // يُستخدم بواسطة network/PhpApiClient.kt للجسر بين Kotlin و PHP (Firebase auth + FCM + ضغط الصور).
+        buildConfigField("String", "PHP_BASE_URL", "\"https://openou.example.com/\"")
     }
 
     signingConfigs {
@@ -70,7 +76,7 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
 
-    buildFeatures { compose = true }
+    buildFeatures { compose = true; buildConfig = true }
     composeOptions { kotlinCompilerExtensionVersion = "1.5.14" }
 
     externalNativeBuild {
@@ -111,6 +117,32 @@ dependencies {
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
+
+    // ============================================================
+    // 10 مكاتب/حزم إضافية لتحسين التطبيق وأداءه وموثوقيته
+    // ============================================================
+    // 1) دعم تبديل لغة التطبيق (عربي/إنجليزي) لكل تطبيق دون تغيير لغة الجهاز بالكامل
+    implementation("androidx.appcompat:appcompat:1.7.0")
+    // 2) DataStore لحفظ تفضيلات المستخدم (اللغة، الإعدادات) بشكل غير متزامن وآمن بدل SharedPreferences
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
+    // 3) Retrofit — عميل شبكة نظيف للتواصل مع خادم PHP المساعد (server/php)
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    // 4) محوّل Gson لتحويل JSON تلقائيًا لكائنات Kotlin مع Retrofit
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    // 5) OkHttp Logging Interceptor — تشخيص طلبات الشبكة أثناء التطوير
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    // 6) Timber — تسجيل (Logging) منظم بدل Log.d المباشر، يسهّل التتبع والتصحيح
+    implementation("com.jakewharton.timber:timber:5.0.1")
+    // 7) Lottie Compose — رسوم متحركة خفيفة الحجم عالية الأداء بدل GIF/فيديو
+    implementation("com.airbnb.android:lottie-compose:6.4.0")
+    // 8) WorkManager — مزامنة موثوقة في الخلفية (مثال: إعادة محاولة عمليات فشلت بسبب الشبكة)
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
+    // 9) Firebase Crashlytics — تتبّع الأعطال الحقيقية على أجهزة المستخدمين
+    implementation("com.google.firebase:firebase-crashlytics-ktx")
+    // 9b) Firebase Performance Monitoring — قياس أداء الشبكة والشاشات فعليًا
+    implementation("com.google.firebase:firebase-perf-ktx")
+    // 10) LeakCanary — كشف تسريبات الذاكرة تلقائيًا أثناء التطوير (Debug فقط)
+    debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
