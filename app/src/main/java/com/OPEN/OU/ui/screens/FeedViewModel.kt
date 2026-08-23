@@ -10,6 +10,7 @@ import com.OPEN.OU.data.model.ReactionType
 import com.OPEN.OU.data.repository.AuthRepository
 import com.OPEN.OU.data.repository.PostRepository
 import com.OPEN.OU.data.repository.UserRepository
+import com.OPEN.OU.network.PhpBridgeRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,7 +19,8 @@ import kotlinx.coroutines.launch
 class FeedViewModel(
     private val postRepo: PostRepository = PostRepository(),
     private val authRepo: AuthRepository = AuthRepository(),
-    private val userRepo: UserRepository = UserRepository()
+    private val userRepo: UserRepository = UserRepository(),
+    private val phpBridge: PhpBridgeRepository = PhpBridgeRepository()
 ) : ViewModel() {
 
     private val _feed = MutableStateFlow<List<Post>>(emptyList())
@@ -103,8 +105,18 @@ class FeedViewModel(
                         scheduledAt = scheduledAt
                     )
                 )
-            }.onSuccess {
+            }.onSuccess { postId ->
                 onDone()
+                // بث إشعار "فقرة جديدة" لكل المستخدمين — فقط للفقرات العامة المنشورة فورًا
+                // (الفقرات المجدولة scheduledAt تُستثنى: لا توجد آلية خلفية لإطلاق الإشعار عند حلول موعدها لاحقًا)
+                val isImmediatePublic = privacy == "PUBLIC" && (scheduledAt == null || scheduledAt <= System.currentTimeMillis())
+                if (isImmediatePublic) {
+                    viewModelScope.launch {
+                        runCatching {
+                            phpBridge.notifyNewParagraphBestEffort(postId, authorUsername, content)
+                        }.onFailure { _errorMessage.value = null } // Best-effort: لا نعرض أي خطأ للمستخدم بسببه
+                    }
+                }
             }.onFailure {
                 _errorMessage.value = it.message ?: "تعذّر نشر الفقرة، حاول مجددًا"
             }
