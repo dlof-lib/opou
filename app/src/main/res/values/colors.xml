@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="opou_green">#0B7A4A</color>
+    <color name="opou_green_dark">#095E39</color>
+    <color name="opou_green_light">#3FA873</color>
+    <color name="opou_gold">#E4B94A</color>
+    <color name="opou_background">#F5F8F6</color>
+    <color name="opou_surface">#FFFFFF</color>
+    <color name="opou_text_primary">#122019</color>
+    <color name="opou_text_secondary">#5B6B62</color>
+    <color name="opou_star">#F5A623</color>
+    <color name="opou_broken_heart">#E23E57</color>
+</resources>
