@@ -4,8 +4,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
 /**
- * لوحة ألوان أوبو الحديثة — مزيج بين حيادية يوتيوب (خلفيات داكنة نظيفة، تباين عالٍ للقراءة)
- * وحيوية إنستغرام (تدرّج لوني مميز للعلامة التجارية وحلقات الصور الرمزية والأزرار الرئيسية).
+ * لوحة ألوان أوبو — مطابقة لأيقونة التطبيق الفعلية: أخضر داكن (#0B7A4A) على
+ * خلفيات يوتيوب الداكنة النظيفة، بدل التدرّج البرتقالي/الوردي/البنفسجي المستخدم سابقًا.
  */
 
 // خلفيات على طراز يوتيوب الداكن
@@ -24,21 +24,22 @@ val OpouTextSecondary = Color(0xFF9AA29D)
 val OpouTextPrimaryLight = Color(0xFF14140F)
 val OpouTextSecondaryLight = Color(0xFF5B6B62)
 
-// تدرّج العلامة التجارية على طراز إنستغرام (نستخدمه في الشعار، الحلقات، وزر النشر)
-val OpouGradientStart = Color(0xFFFFC24B) // ذهبي
-val OpouGradientMid = Color(0xFFE23E7E)   // وردي
-val OpouGradientEnd = Color(0xFF7B3FE4)   // بنفسجي
+// أخضر أوبو — نفس لوني أيقونة التطبيق بالضبط
+val OpouGreen = Color(0xFF0B7A4A)       // خلفية الأيقونة
+val OpouGreenDark = Color(0xFF095E39)   // تظليل الأيقونة الغامق
+val OpouGreenLight = Color(0xFF14A876)  // درجة أفتح لإبراز التدرّج
+
+// تدرّج العلامة التجارية — الآن أخضر مطابق للأيقونة (كان قوس قزح إنستغرام سابقًا)
+val OpouGradientStart = OpouGreenLight
+val OpouGradientMid = OpouGreen
+val OpouGradientEnd = OpouGreenDark
 
 val OpouBrandGradient = Brush.linearGradient(
     colors = listOf(OpouGradientStart, OpouGradientMid, OpouGradientEnd)
 )
 
-// أخضر أوبو الأصلي (يبقى للعلامة كلون ثانوي هادئ في العناصر غير التفاعلية)
-val OpouGreen = Color(0xFF0B7A4A)
-val OpouGreenLight = Color(0xFF3FA873)
-
-// ألوان التفاعلات
+// ألوان التفاعلات (تبقى مميزة عن اللون الأساسي لسهولة التمييز الوظيفي)
 val OpouStar = Color(0xFFFFC93C)      // إعجاب ⭐ -> أيقونة نجمة
 val OpouBrokenHeart = Color(0xFFFF3B5C) // لم يعجبني 💔 -> أيقونة قلب مكسور
 val OpouAccentBlue = Color(0xFF4E9EFF) // تعليقات
-val OpouAccentGreen = Color(0xFF3FD07A) // تيك (إعادة نشر)
+val OpouAccentGreen = OpouGreenLight    // تيك (إعادة نشر) — نفس عائلة الأخضر الآن
