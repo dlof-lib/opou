@@ -27,6 +27,7 @@ import coil.compose.AsyncImage
 import com.OPEN.OU.R
 import com.OPEN.OU.data.model.Comment
 import com.OPEN.OU.ui.screens.CommentsViewModel
+import com.OPEN.OU.ui.theme.OpouAccentGreen
 import com.OPEN.OU.ui.theme.OpouBrandGradient
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -38,8 +39,11 @@ import java.util.Locale
  * تُحاكي شكل وسلوك الـ bottom sheet: تظهر من الأسفل، وتُغلق عند
  * الضغط خارجها أو عند استدعاء onDismiss.
  *
- * تصميم مُحدَّث: فقاعات تعليقات مرتّبة بصورة رمزية + اسم + وقت نسبي،
- * حقل كتابة عائم على طراز تطبيقات التواصل الحديثة، وحالة فارغة أنيقة.
+ * تصميم مُحدَّث ومميّز: كل تعليق يُعرض كبطاقة مستقلة أنيقة (لا فقاعة
+ * محادثة تقليدية) بشريط تمييز رفيع بلون العلامة، صورة رمزية بإطار
+ * متدرّج، واسم يبرز بلون العلامة — يمنح مظهرًا احترافيًا أقرب لمنصات
+ * النقاش الجادة منه لتطبيقات الدردشة. حقل الكتابة عائم بأسلوب حديث،
+ * وحالة فارغة أنيقة مع أيقونة داخل دائرة متدرّجة.
  */
 @Composable
 fun CommentsSheet(
@@ -67,7 +71,7 @@ fun CommentsSheet(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.45f))
+                .background(Color.Black.copy(alpha = 0.5f))
                 .clickable(
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() }
@@ -77,37 +81,54 @@ fun CommentsSheet(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.82f)
-                    .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                    .fillMaxHeight(0.85f)
+                    .clip(RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
                     .clickable(
                         indication = null,
                         interactionSource = remember { MutableInteractionSource() }
                     ) { /* استهلاك النقر حتى لا يُغلق عند الضغط داخل الورقة */ },
                 color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 4.dp
+                tonalElevation = 6.dp
             ) {
                 Column(Modifier.fillMaxSize()) {
                     // مقبض السحب + العنوان
-                    Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                    Column(Modifier.padding(horizontal = 18.dp, vertical = 14.dp)) {
                         Box(
                             Modifier
                                 .align(Alignment.CenterHorizontally)
-                                .padding(bottom = 14.dp)
-                                .width(36.dp)
+                                .padding(bottom = 16.dp)
+                                .width(38.dp)
                                 .height(4.dp)
                                 .clip(RoundedCornerShape(2.dp))
-                                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f))
+                                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f))
                         )
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                stringResource(R.string.comments_title),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(30.dp)
+                                        .clip(CircleShape)
+                                        .background(OpouAccentGreen.copy(alpha = 0.12f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Filled.ChatBubbleOutline,
+                                        contentDescription = null,
+                                        tint = OpouAccentGreen,
+                                        modifier = Modifier.size(15.dp)
+                                    )
+                                }
+                                Spacer(Modifier.width(10.dp))
+                                Text(
+                                    stringResource(R.string.comments_title),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                             if (comments.isNotEmpty()) {
                                 Surface(
                                     shape = RoundedCornerShape(12.dp),
@@ -117,14 +138,15 @@ fun CommentsSheet(
                                         text = comments.size.toString(),
                                         style = MaterialTheme.typography.labelMedium,
                                         color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.padding(horizontal = 11.dp, vertical = 5.dp)
                                     )
                                 }
                             }
                         }
                     }
 
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
 
                     // قائمة التعليقات
                     if (comments.isEmpty()) {
@@ -132,22 +154,30 @@ fun CommentsSheet(
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Box(
                                     modifier = Modifier
-                                        .size(64.dp)
+                                        .size(72.dp)
                                         .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)),
+                                        .background(
+                                            androidx.compose.ui.graphics.Brush.linearGradient(
+                                                listOf(
+                                                    OpouAccentGreen.copy(alpha = 0.18f),
+                                                    OpouAccentGreen.copy(alpha = 0.06f)
+                                                )
+                                            )
+                                        ),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         Icons.Filled.ChatBubbleOutline,
                                         contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(28.dp)
+                                        tint = OpouAccentGreen,
+                                        modifier = Modifier.size(30.dp)
                                     )
                                 }
-                                Spacer(Modifier.height(12.dp))
+                                Spacer(Modifier.height(14.dp))
                                 Text(
                                     stringResource(R.string.no_comments_yet),
                                     style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
@@ -155,26 +185,26 @@ fun CommentsSheet(
                     } else {
                         LazyColumn(
                             modifier = Modifier.weight(1f).fillMaxWidth(),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
-                            verticalArrangement = Arrangement.spacedBy(14.dp)
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             items(comments, key = { it.commentId }) { comment ->
-                                CommentRow(comment)
+                                CommentRow(comment, isPostAuthor = postAuthorId != null && comment.authorId == postAuthorId)
                             }
                         }
                     }
 
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
 
                     // حقل الكتابة
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        CommentAvatar(url = currentAvatar, base64 = currentAvatarBase64, size = 34.dp)
-                        Spacer(Modifier.width(8.dp))
+                        CommentAvatar(url = currentAvatar, base64 = currentAvatarBase64, size = 36.dp)
+                        Spacer(Modifier.width(10.dp))
                         OutlinedTextField(
                             value = text,
                             onValueChange = { text = it },
@@ -185,21 +215,22 @@ fun CommentsSheet(
                                 )
                             },
                             modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(22.dp),
+                            shape = RoundedCornerShape(24.dp),
                             singleLine = true,
                             colors = OutlinedTextFieldDefaults.colors(
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                                focusedBorderColor = OpouAccentGreen.copy(alpha = 0.7f)
                             )
                         )
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(10.dp))
                         val canSend = text.isNotBlank()
                         Box(
                             modifier = Modifier
-                                .size(42.dp)
+                                .size(44.dp)
                                 .clip(CircleShape)
                                 .background(
                                     if (canSend) OpouBrandGradient
-                                    else solidBrush(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f))
+                                    else solidBrush(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.14f))
                                 )
                                 .clickable(enabled = canSend) {
                                     viewModel.send(
@@ -231,38 +262,75 @@ fun CommentsSheet(
 
 private fun solidBrush(color: Color) = androidx.compose.ui.graphics.Brush.linearGradient(listOf(color, color))
 
+/**
+ * بطاقة تعليق مستقلة — بديل مميّز عن فقاعة المحادثة التقليدية: شريط رفيع
+ * بلون العلامة على الحافة، صورة رمزية بإطار متدرّج، اسم بلون أساسي بارز،
+ * ووقت نسبي أنيق في نفس السطر. تعليقات صاحب الفقرة تحمل شارة صغيرة مميّزة.
+ */
 @Composable
-private fun CommentRow(comment: Comment) {
-    Row(verticalAlignment = Alignment.Top) {
-        CommentAvatar(url = comment.authorAvatarUrl, base64 = comment.authorAvatarBase64, size = 36.dp)
-        Spacer(Modifier.width(10.dp))
-        Column(Modifier.weight(1f)) {
-            Surface(
-                shape = RoundedCornerShape(topStart = 4.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 16.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            ) {
-                Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                    Text(
-                        comment.authorUsername,
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary
+private fun CommentRow(comment: Comment, isPostAuthor: Boolean = false) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+        )
+    ) {
+        Row(Modifier.height(IntrinsicSize.Min).padding(end = 12.dp)) {
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .fillMaxHeight()
+                    .background(
+                        if (isPostAuthor) OpouAccentGreen else OpouAccentGreen.copy(alpha = 0.25f)
                     )
-                    Spacer(Modifier.height(2.dp))
+            )
+            Row(
+                verticalAlignment = Alignment.Top,
+                modifier = Modifier.padding(start = 12.dp, top = 10.dp, bottom = 10.dp)
+            ) {
+                CommentAvatar(url = comment.authorAvatarUrl, base64 = comment.authorAvatarBase64, size = 38.dp)
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            comment.authorUsername,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = OpouAccentGreen
+                        )
+                        if (isPostAuthor) {
+                            Spacer(Modifier.width(6.dp))
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = OpouAccentGreen.copy(alpha = 0.15f)
+                            ) {
+                                Text(
+                                    "صاحب الفقرة",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = OpouAccentGreen,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+                                )
+                            }
+                        }
+                        Spacer(Modifier.weight(1f))
+                        Text(
+                            text = formatRelativeTime(comment.createdAt),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Spacer(Modifier.height(4.dp))
                     Text(
                         comment.content,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        lineHeight = MaterialTheme.typography.bodyMedium.lineHeight
                     )
                 }
             }
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = formatRelativeTime(comment.createdAt),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 12.dp)
-            )
         }
     }
 }
