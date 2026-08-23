@@ -9,6 +9,10 @@
         },
         "bannerBase64": {
           ".validate": "newData.isString() && newData.val().length <= 500000"
+        },
+        "tekersCount": {
+          ".write": "auth != null",
+          ".validate": "newData.isNumber()"
         }
       }
     },
