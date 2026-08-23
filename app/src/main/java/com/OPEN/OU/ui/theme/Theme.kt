@@ -44,6 +44,7 @@ fun OpouTheme(
     MaterialTheme(
         colorScheme = colors,
         typography = OpouTypography,
+        shapes = OpouShapes,
         content = content
     )
 }
