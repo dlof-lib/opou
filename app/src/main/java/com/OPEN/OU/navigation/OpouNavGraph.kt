@@ -1,16 +1,33 @@
 package com.OPEN.OU.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.OPEN.OU.R
 import com.OPEN.OU.data.model.Post
 import com.OPEN.OU.data.repository.AuthRepository
 import com.OPEN.OU.data.repository.UserRepository
@@ -20,20 +37,24 @@ import com.OPEN.OU.ui.screens.*
 private object Routes {
     const val LOGIN = "login"
     const val REGISTER = "register"
-    const val FEED = "feed"
+    const val MAIN = "main"
     const val CREATE_POST = "create_post"
     const val PROFILE = "profile/{uid}"
     const val EDIT_PROFILE = "edit_profile/{uid}"
+    const val SETTINGS = "settings"
     fun profile(uid: String) = "profile/$uid"
     fun editProfile(uid: String) = "edit_profile/$uid"
 }
+
+/** تبويبات شريط التنقّل السفلي: الرئيسية / التيكرز / الحساب */
+private enum class MainTab { HOME, TEKERS, ACCOUNT }
 
 @Composable
 fun OpouNavGraph() {
     val navController = rememberNavController()
     val authRepo = remember { AuthRepository() }
     val userRepo = remember { UserRepository() }
-    val startDestination = if (authRepo.currentUserId != null) Routes.FEED else Routes.LOGIN
+    val startDestination = if (authRepo.currentUserId != null) Routes.MAIN else Routes.LOGIN
 
     // بيانات المستخدم الحالي الحقيقية، تُقرأ فوريًا (Realtime) من /users/{uid}
     var currentUsername by remember { mutableStateOf("") }
@@ -60,7 +81,7 @@ fun OpouNavGraph() {
             LoginScreen(
                 viewModel = vm,
                 onLoginSuccess = {
-                    navController.navigate(Routes.FEED) {
+                    navController.navigate(Routes.MAIN) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
                     }
                 },
@@ -73,7 +94,7 @@ fun OpouNavGraph() {
             RegisterScreen(
                 viewModel = vm,
                 onRegisterSuccess = {
-                    navController.navigate(Routes.FEED) {
+                    navController.navigate(Routes.MAIN) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
                     }
                 },
@@ -81,27 +102,66 @@ fun OpouNavGraph() {
             )
         }
 
-        composable(Routes.FEED) {
-            val vm: FeedViewModel = viewModel()
-            FeedScreen(
-                viewModel = vm,
-                currentUsername = currentUsername,
-                currentAvatar = currentAvatar,
-                currentAvatarBase64 = currentAvatarBase64,
-                onOpenProfile = { uid -> navController.navigate(Routes.profile(uid)) },
-                onOpenComments = { post -> activeCommentsPost = post },
-                onCreatePost = { navController.navigate(Routes.CREATE_POST) }
-            )
+        composable(Routes.MAIN) {
+            val myUid = authRepo.currentUserId
+            var tab by rememberSaveable { mutableStateOf(MainTab.HOME) }
 
-            activeCommentsPost?.let { post ->
-                val commentsVm: CommentsViewModel = viewModel()
-                CommentsSheet(
-                    postId = post.postId,
-                    currentUsername = currentUsername,
-                    currentAvatar = currentAvatar,
-                    viewModel = commentsVm,
-                    onDismiss = { activeCommentsPost = null }
-                )
+            Scaffold(
+                bottomBar = {
+                    OpouBottomBar(selected = tab, onSelect = { tab = it })
+                }
+            ) { padding ->
+                Box(Modifier.padding(padding).fillMaxSize()) {
+                    when (tab) {
+                        MainTab.HOME -> {
+                            val vm: FeedViewModel = viewModel()
+                            FeedScreen(
+                                viewModel = vm,
+                                currentUsername = currentUsername,
+                                currentAvatar = currentAvatar,
+                                currentAvatarBase64 = currentAvatarBase64,
+                                onOpenProfile = { uid -> navController.navigate(Routes.profile(uid)) },
+                                onOpenComments = { post -> activeCommentsPost = post },
+                                onCreatePost = { navController.navigate(Routes.CREATE_POST) }
+                            )
+
+                            activeCommentsPost?.let { post ->
+                                val commentsVm: CommentsViewModel = viewModel()
+                                CommentsSheet(
+                                    postId = post.postId,
+                                    currentUsername = currentUsername,
+                                    currentAvatar = currentAvatar,
+                                    currentAvatarBase64 = currentAvatarBase64,
+                                    viewModel = commentsVm,
+                                    postAuthorId = post.authorId,
+                                    onDismiss = { activeCommentsPost = null }
+                                )
+                            }
+                        }
+
+                        MainTab.TEKERS -> {
+                            val vm: TekersViewModel = viewModel()
+                            TekersScreen(
+                                viewModel = vm,
+                                onOpenProfile = { uid -> navController.navigate(Routes.profile(uid)) }
+                            )
+                        }
+
+                        MainTab.ACCOUNT -> {
+                            if (myUid != null) {
+                                val vm: ProfileViewModel = viewModel()
+                                ProfileScreen(
+                                    uid = myUid,
+                                    viewModel = vm,
+                                    onBack = {},
+                                    showBackButton = false,
+                                    onEditRoom = { navController.navigate(Routes.editProfile(myUid)) },
+                                    onOpenSettings = { navController.navigate(Routes.SETTINGS) }
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -114,6 +174,19 @@ fun OpouNavGraph() {
                 currentAvatarBase64 = currentAvatarBase64,
                 onDone = { navController.popBackStack() },
                 onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.SETTINGS) {
+            val vm: SettingsViewModel = viewModel()
+            SettingsScreen(
+                viewModel = vm,
+                onBack = { navController.popBackStack() },
+                onLoggedOut = {
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
             )
         }
 
@@ -144,5 +217,59 @@ fun OpouNavGraph() {
                 onBack = { navController.popBackStack() }
             )
         }
+    }
+}
+
+@Composable
+private fun OpouBottomBar(selected: MainTab, onSelect: (MainTab) -> Unit) {
+    NavigationBar(containerColor = MaterialTheme.colorScheme.background) {
+        NavigationBarItem(
+            selected = selected == MainTab.HOME,
+            onClick = { onSelect(MainTab.HOME) },
+            icon = {
+                Icon(
+                    if (selected == MainTab.HOME) Icons.Filled.Home else Icons.Outlined.Home,
+                    contentDescription = stringResource(R.string.nav_home)
+                )
+            },
+            label = { Text(stringResource(R.string.nav_home)) },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = MaterialTheme.colorScheme.primary,
+                selectedTextColor = MaterialTheme.colorScheme.primary,
+                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+            )
+        )
+        NavigationBarItem(
+            selected = selected == MainTab.TEKERS,
+            onClick = { onSelect(MainTab.TEKERS) },
+            icon = {
+                Icon(
+                    if (selected == MainTab.TEKERS) Icons.Filled.Groups else Icons.Outlined.Groups,
+                    contentDescription = stringResource(R.string.nav_tekers)
+                )
+            },
+            label = { Text(stringResource(R.string.nav_tekers)) },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = MaterialTheme.colorScheme.primary,
+                selectedTextColor = MaterialTheme.colorScheme.primary,
+                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+            )
+        )
+        NavigationBarItem(
+            selected = selected == MainTab.ACCOUNT,
+            onClick = { onSelect(MainTab.ACCOUNT) },
+            icon = {
+                Icon(
+                    if (selected == MainTab.ACCOUNT) Icons.Filled.AccountCircle else Icons.Outlined.AccountCircle,
+                    contentDescription = stringResource(R.string.nav_account)
+                )
+            },
+            label = { Text(stringResource(R.string.nav_account)) },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = MaterialTheme.colorScheme.primary,
+                selectedTextColor = MaterialTheme.colorScheme.primary,
+                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+            )
+        )
     }
 }
