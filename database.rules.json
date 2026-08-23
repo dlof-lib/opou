@@ -4,29 +4,52 @@
       "$uid": {
         ".read": true,
         ".write": "auth != null && auth.uid === $uid",
+
         "avatarBase64": {
           ".validate": "newData.isString() && newData.val().length <= 300000"
         },
         "bannerBase64": {
           ".validate": "newData.isString() && newData.val().length <= 500000"
         },
+
+        "paragraphsCount": {
+          ".write": "auth != null",
+          ".validate": "newData.isNumber()"
+        },
         "tekersCount": {
           ".write": "auth != null",
           ".validate": "newData.isNumber()"
+        },
+        "tekingCount": {
+          ".write": "auth != null",
+          ".validate": "newData.isNumber()"
+        },
+
+        "fcmToken": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "newData.isString() && newData.val().length <= 4096"
+        },
+
+        "language": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "newData.isString() && (newData.val() === 'ar' || newData.val() === 'en')"
         }
       }
     },
+
     "usernames": {
       ".read": true,
       "$username": {
         ".write": "auth != null && !data.exists()"
       }
     },
+
     "posts": {
       ".read": true,
       ".indexOn": ["createdAt", "shaabiyaScore", "authorId"],
       "$postId": {
         ".write": "auth != null && (!data.exists() || data.child('authorId').val() === auth.uid || (newData.child('authorId').val() === data.child('authorId').val()))",
+
         "imageBase64": {
           ".validate": "newData.isString() && newData.val().length <= 1000000"
         },
@@ -35,9 +58,31 @@
         },
         "content": {
           ".validate": "newData.isString() && newData.val().length <= 20000"
+        },
+
+        "likesCount": {
+          ".write": "auth != null",
+          ".validate": "newData.isNumber()"
+        },
+        "dislikesCount": {
+          ".write": "auth != null",
+          ".validate": "newData.isNumber()"
+        },
+        "commentsCount": {
+          ".write": "auth != null",
+          ".validate": "newData.isNumber()"
+        },
+        "teksCount": {
+          ".write": "auth != null",
+          ".validate": "newData.isNumber()"
+        },
+        "shaabiyaScore": {
+          ".write": "auth != null",
+          ".validate": "newData.isNumber()"
         }
       }
     },
+
     "comments": {
       "$postId": {
         ".read": true,
@@ -47,6 +92,7 @@
         }
       }
     },
+
     "reactions": {
       "$postId": {
         ".read": true,
@@ -55,22 +101,35 @@
         }
       }
     },
+
     "userReactions": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
         ".write": "auth != null && auth.uid === $uid"
       }
     },
+
     "teking": {
       "$uid": {
         ".read": true,
         ".write": "auth != null && auth.uid === $uid"
       }
     },
+
     "tekers": {
       "$uid": {
         ".read": true,
         ".write": "auth != null"
+      }
+    },
+
+    "settings": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        "language": {
+          ".validate": "newData.isString() && (newData.val() === 'ar' || newData.val() === 'en')"
+        }
       }
     }
   }
