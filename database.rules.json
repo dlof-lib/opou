@@ -1,0 +1,67 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": true,
+        ".write": "auth != null && auth.uid === $uid",
+        "avatarBase64": {
+          ".validate": "newData.isString() && newData.val().length <= 300000"
+        },
+        "bannerBase64": {
+          ".validate": "newData.isString() && newData.val().length <= 500000"
+        }
+      }
+    },
+    "usernames": {
+      ".read": true,
+      "$username": {
+        ".write": "auth != null && !data.exists()"
+      }
+    },
+    "posts": {
+      ".read": true,
+      ".indexOn": ["createdAt", "shaabiyaScore", "authorId"],
+      "$postId": {
+        ".write": "auth != null && (!data.exists() || data.child('authorId').val() === auth.uid || (newData.child('authorId').val() === data.child('authorId').val()))",
+        "imageBase64": {
+          ".validate": "newData.isString() && newData.val().length <= 1000000"
+        },
+        "authorAvatarBase64": {
+          ".validate": "newData.isString() && newData.val().length <= 300000"
+        },
+        "content": {
+          ".validate": "newData.isString() && newData.val().length <= 20000"
+        }
+      }
+    },
+    "comments": {
+      "$postId": {
+        ".read": true,
+        ".indexOn": ["createdAt"],
+        "$commentId": {
+          ".write": "auth != null && (!data.exists() || data.child('authorId').val() === auth.uid)"
+        }
+      }
+    },
+    "reactions": {
+      "$postId": {
+        ".read": true,
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid"
+        }
+      }
+    },
+    "teking": {
+      "$uid": {
+        ".read": true,
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "tekers": {
+      "$uid": {
+        ".read": true,
+        ".write": "auth != null"
+      }
+    }
+  }
+}
