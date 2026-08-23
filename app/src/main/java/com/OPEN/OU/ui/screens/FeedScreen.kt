@@ -68,7 +68,7 @@ fun FeedScreen(
             ) {
                 Box(
                     modifier = Modifier
-                        .matchParentSize()
+                        .fillMaxSize()
                         .background(OpouBrandGradient, shape = MaterialTheme.shapes.large),
                     contentAlignment = androidx.compose.ui.Alignment.Center
                 ) {
