@@ -6,6 +6,8 @@ data class Comment(
     val authorId: String = "",
     val authorUsername: String = "",
     val authorAvatarUrl: String = "",
+    // صورة رمزية مخزّنة كـ Base64 (نفس نمط Post/User) — تُستخدم أولًا إن وُجدت
+    val authorAvatarBase64: String = "",
     val content: String = "",
     val createdAt: Long = System.currentTimeMillis()
 )
