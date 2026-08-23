@@ -30,11 +30,21 @@ data class UploadAvatarResponse(
     val url: String? = null
 )
 
-/** جسم طلب إرسال إشعار عبر server/php/notify.php */
+/**
+ * جسم طلب إرسال إشعار عبر server/php/notify.php.
+ * يُرسل إما لجهاز واحد (targetToken) أو لكل المشتركين في موضوع بث (topic) — أحدهما مطلوب.
+ * حقول type/postId/authorUsername/preview بيانات إضافية (data payload) تُستخدم في
+ * OpouMessagingService لبناء إشعار غني (BigTextStyle، لون العلامة، فتح الفقرة المعنية...).
+ */
 data class NotifyRequest(
-    val targetToken: String,
+    val targetToken: String? = null,
+    val topic: String? = null,
     val title: String,
-    val body: String
+    val body: String,
+    val type: String? = null,
+    val postId: String? = null,
+    val authorUsername: String? = null,
+    val preview: String? = null
 )
 
 /** استجابة إرسال الإشعار */
