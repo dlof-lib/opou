@@ -23,6 +23,7 @@ import coil.compose.AsyncImage
 import com.OPEN.OU.R
 import com.OPEN.OU.data.repository.AuthRepository
 import com.OPEN.OU.ui.components.Base64Image
+import com.OPEN.OU.ui.components.GradientText
 import com.OPEN.OU.ui.components.ImagePickerButton
 import com.OPEN.OU.ui.theme.OpouBrandGradient
 import com.OPEN.OU.util.ImageCodec
@@ -78,7 +79,19 @@ fun ProfileScreen(
                 .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box {
+            Box(
+                modifier = Modifier
+                    .size(140.dp)
+                    .background(
+                        brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
+                                Color.Transparent
+                            )
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
                 val avatarModifier = Modifier
                     .size(96.dp)
                     .clip(CircleShape)
@@ -115,7 +128,7 @@ fun ProfileScreen(
 
             Spacer(Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(user.username, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                GradientText(text = user.username, style = MaterialTheme.typography.titleLarge)
                 if (user.verified) {
                     Spacer(Modifier.width(6.dp))
                     Icon(
