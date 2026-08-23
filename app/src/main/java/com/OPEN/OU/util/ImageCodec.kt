@@ -128,9 +128,15 @@ object ImageCodec {
 
     private fun readBounds(context: Context, uri: Uri): Pair<Int, Int>? {
         val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        openStream(context, uri)?.use { input ->
-            BitmapFactory.decodeStream(input, null, options)
-        } ?: return null
+        // ملاحظة (إصلاح خلل "تعذّر قراءة أبعاد الصورة"): مع inJustDecodeBounds = true
+        // فإن BitmapFactory.decodeStream يُعيد null دائمًا بتصميمه (هذا هو المتوقع
+        // والنجاح، لا الفشل) — أبعاد الصورة تُكتب داخل `options` وليس في القيمة
+        // المُعادة. الكود السابق كان يستخدم بالخطأ ناتج decodeStream نفسه (وهو null
+        // دومًا هنا) كمؤشر فشل عبر `?: return null`، مما كان يجعل كل صورة تُرفض فورًا
+        // بهذه الرسالة بغضّ النظر عن صحتها. الإصلاح: نتحقق فقط من فتح الـ Stream،
+        // ثم نعتمد حصريًا على `options.outWidth/outHeight` بعد تنفيذ القراءة.
+        val stream = openStream(context, uri) ?: return null
+        stream.use { input -> BitmapFactory.decodeStream(input, null, options) }
         if (options.outWidth <= 0 || options.outHeight <= 0) return null
         return options.outWidth to options.outHeight
     }
