@@ -69,12 +69,17 @@ class PostRepository(
         return postId
     }
 
-    /** الاستماع الفوري (Realtime) لتدفق الفقرات الأحدث أولًا */
-    fun observeFeed(limit: Int = 50): Flow<List<Post>> = callbackFlow {
+    /** الاستماع الفوري (Realtime) لتدفق الفقرات الأحدث أولًا، مع تطبيق خصوصية الفقرة وحالة الجدولة */
+    fun observeFeed(
+        limit: Int = 50,
+        viewerId: String? = null,
+        viewerFollowingIds: Set<String> = emptySet()
+    ): Flow<List<Post>> = callbackFlow {
         val query: Query = postsRef.orderByChild("createdAt").limitToLast(limit)
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val list = snapshot.children.mapNotNull { it.getValue(Post::class.java) }
+                    .filter { isVisibleTo(it, viewerId, viewerFollowingIds) }
                     .sortedByDescending { it.createdAt }
                 trySend(list)
             }
@@ -84,12 +89,17 @@ class PostRepository(
         awaitClose { query.removeEventListener(listener) }
     }
 
-    /** تبويب "الشعبيات": الأعلى نقاط شعبية */
-    fun observeShaabiyat(limit: Int = 30): Flow<List<Post>> = callbackFlow {
+    /** تبويب "الشعبيات": الأعلى نقاط شعبية، مع نفس قواعد الخصوصية/الجدولة */
+    fun observeShaabiyat(
+        limit: Int = 30,
+        viewerId: String? = null,
+        viewerFollowingIds: Set<String> = emptySet()
+    ): Flow<List<Post>> = callbackFlow {
         val query: Query = postsRef.orderByChild("shaabiyaScore").limitToLast(limit)
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val list = snapshot.children.mapNotNull { it.getValue(Post::class.java) }
+                    .filter { isVisibleTo(it, viewerId, viewerFollowingIds) }
                     .sortedByDescending { it.shaabiyaScore }
                 trySend(list)
             }
@@ -97,6 +107,26 @@ class PostRepository(
         }
         query.addValueEventListener(listener)
         awaitClose { query.removeEventListener(listener) }
+    }
+
+    /**
+     * يطبّق قواعد خصوصية الفقرة (PUBLIC/PRIVATE/LIMITED/CUSTOM) وحالة الجدولة (scheduledAt)
+     * لتحديد ما إذا كانت فقرة معينة يجب أن تظهر لمستخدم زائر بعينه في التغذية.
+     * الفقرات المجدولة لموعد مستقبلي لا تظهر إلا لصاحبها (كمعاينة).
+     */
+    private fun isVisibleTo(post: Post, viewerId: String?, viewerFollowingIds: Set<String>): Boolean {
+        val isOwner = viewerId != null && viewerId == post.authorId
+        if (post.isScheduledForFuture() && !isOwner) return false
+        if (isOwner) return true
+
+        return when (com.OPEN.OU.data.model.ParagraphPrivacy.fromValue(post.privacy)) {
+            com.OPEN.OU.data.model.ParagraphPrivacy.PUBLIC -> true
+            com.OPEN.OU.data.model.ParagraphPrivacy.PRIVATE -> false
+            com.OPEN.OU.data.model.ParagraphPrivacy.LIMITED ->
+                viewerId != null && post.authorId in viewerFollowingIds
+            com.OPEN.OU.data.model.ParagraphPrivacy.CUSTOM ->
+                viewerId != null && viewerId in post.allowedViewerIds
+        }
     }
 
     /** تفاعل ⭐ إعجاب أو 💔 عدم إعجاب — يمنع الازدواجية ويعالج التبديل بين الحالتين */
