@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.PersonRemove
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,7 +35,9 @@ fun ProfileScreen(
     uid: String,
     viewModel: ProfileViewModel,
     onBack: () -> Unit,
-    onEditRoom: () -> Unit = {}
+    onEditRoom: () -> Unit = {},
+    showBackButton: Boolean = true,
+    onOpenSettings: (() -> Unit)? = null
 ) {
     val room by viewModel.room.collectAsState()
     val isTeking by viewModel.isTeking.collectAsState()
@@ -57,8 +60,17 @@ fun ProfileScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.profile_room), fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = "رجوع")
+                    if (showBackButton) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = stringResource(R.string.action_back))
+                        }
+                    }
+                },
+                actions = {
+                    if (onOpenSettings != null) {
+                        IconButton(onClick = onOpenSettings) {
+                            Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.settings_open))
+                        }
                     }
                 }
             )
