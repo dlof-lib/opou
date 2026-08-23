@@ -152,10 +152,11 @@ fun ProfileScreen(
                 }
             }
 
-            if (user.communityName.isNotBlank()) {
-                Spacer(Modifier.height(6.dp))
-                AssistChip(onClick = {}, label = { Text(user.communityName) })
-            }
+            Spacer(Modifier.height(6.dp))
+            AssistChip(
+                onClick = {},
+                label = { Text(user.communityName.ifBlank { stringResource(R.string.official_member_title) }) }
+            )
 
             if (user.bio.isNotBlank()) {
                 Spacer(Modifier.height(10.dp))
