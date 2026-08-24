@@ -44,6 +44,10 @@ fun TekersScreen(
     LaunchedEffect(Unit) { viewModel.load() }
 
     Scaffold(
+        // هذه الشاشة أيضًا تُعرض دائمًا كتبويب داخل الـ Scaffold الخارجي
+        // (الذي يحجز مساحة الشريط السفلي فعليًا)، فنمنع الحجز المضاعف بنفس
+        // الطريقة المطبّقة في FeedScreen.
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { GradientText(text = stringResource(R.string.tekers_title), style = MaterialTheme.typography.titleLarge) },
