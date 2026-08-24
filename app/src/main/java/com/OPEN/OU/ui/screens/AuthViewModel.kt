@@ -9,6 +9,7 @@ import com.OPEN.OU.data.model.AccountStatus
 import com.OPEN.OU.data.repository.AuthRepository
 import com.OPEN.OU.data.repository.UserRepository
 import com.OPEN.OU.util.PinHash
+import com.OPEN.OU.util.TwoFactorGate
 import kotlinx.coroutines.launch
 
 /** خطوات تسجيل الدخول: بيانات الاعتماد العادية، أو خطوة رمز PIN إضافية إن كان التحقق بخطوتين مفعّلاً. */
@@ -25,6 +26,16 @@ class AuthViewModel(
     var reactivatedNotice by mutableStateOf(false); private set
 
     private var pendingUid: String? = null
+
+    /**
+     * يُستدعى من OpouNavGraph عند اكتشاف جلسة Firebase Auth سارية بالفعل (من فتحة تطبيق
+     * سابقة) تخص مستخدمًا فعّل التحقق بخطوتين ولم يُجتَز PIN بعد لهذه الجلسة — بدل السماح
+     * له بالدخول مباشرة، نعيده لخطوة PIN دون الحاجة لإعادة إدخال البريد/كلمة المرور.
+     */
+    fun beginPinRecheck(uid: String) {
+        pendingUid = uid
+        loginStep = LoginStep.TWO_FACTOR_PIN
+    }
 
     fun login(email: String, password: String, onSuccess: (String) -> Unit) {
         viewModelScope.launch {
@@ -61,9 +72,12 @@ class AuthViewModel(
         viewModelScope.launch {
             isLoading = true
             errorMessage = null
-            val user = runCatching { userRepo.getUser(uid) }.getOrNull()
+            // القراءة هنا مسموحة بقواعد Firebase لأن المستخدم موثّق فعليًا بنفس uid في هذه
+            // اللحظة (نجحت كلمة المرور بالفعل) حتى لو لم يجتز بعد حارس PIN الخاص بالتطبيق.
+            val pinHash = runCatching { userRepo.getTwoFactorPinHash(uid) }.getOrDefault("")
             isLoading = false
-            if (user != null && PinHash.matches(uid, pin, user.twoFactorPinHash)) {
+            if (PinHash.matches(uid, pin, pinHash)) {
+                TwoFactorGate.markVerified(uid)
                 onSuccess(uid)
             } else {
                 errorMessage = "رمز التحقق غير صحيح"
