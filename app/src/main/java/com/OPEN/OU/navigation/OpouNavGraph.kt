@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -19,6 +20,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -33,6 +35,7 @@ import com.OPEN.OU.data.repository.AuthRepository
 import com.OPEN.OU.data.repository.UserRepository
 import com.OPEN.OU.ui.components.CommentsSheet
 import com.OPEN.OU.ui.screens.*
+import com.OPEN.OU.util.TwoFactorGate
 
 private object Routes {
     const val LOGIN = "login"
@@ -64,7 +67,34 @@ fun OpouNavGraph(
     val navController = rememberNavController()
     val authRepo = remember { AuthRepository() }
     val userRepo = remember { UserRepository() }
-    val startDestination = if (authRepo.currentUserId != null) Routes.MAIN else Routes.LOGIN
+
+    // ── حارس التحقق بخطوتين ───────────────────────────────────────────────
+    // لا يكفي الاعتماد على وجود جلسة Firebase Auth سارية (authRepo.currentUserId) لتقرير
+    // فتح الشاشة الرئيسية مباشرة: Firebase Auth يُبقي المستخدم "مسجَّل دخول" فعليًا فور
+    // نجاح كلمة المرور، أي قبل إدخال رمز PIN بخطوة كاملة. بدون هذا الفحص، كان يكفي من
+    // يملك كلمة المرور فقط إغلاق التطبيق وإعادة فتحه ليتجاوز شاشة PIN كليًا. لذا ننتظر هنا
+    // (شاشة تحميل بسيطة) حتى نتحقق فعليًا: هل هذا المستخدم يتطلّب PIN ولم يُتمّه بعد لهذه
+    // الجلسة (TwoFactorGate)؟ إن كان كذلك نوجّهه لخطوة PIN بدل الشاشة الرئيسية مباشرة.
+    var authGateChecked by remember { mutableStateOf(false) }
+    var needsPinRecheck by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        val uid = authRepo.currentUserId
+        if (uid != null) {
+            val user = runCatching { userRepo.getUser(uid) }.getOrNull()
+            needsPinRecheck = user?.twoFactorEnabled == true && !TwoFactorGate.isVerified(uid)
+        }
+        authGateChecked = true
+    }
+
+    if (!authGateChecked) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    val startDestination = if (authRepo.currentUserId != null && !needsPinRecheck) Routes.MAIN else Routes.LOGIN
 
     // بيانات المستخدم الحالي الحقيقية، تُقرأ فوريًا (Realtime) من /users/{uid}
     var currentUsername by remember { mutableStateOf("") }
@@ -114,6 +144,13 @@ fun OpouNavGraph(
 
         composable(Routes.LOGIN) {
             val vm: AuthViewModel = viewModel()
+            // إن وصلنا هنا بسبب جلسة سارية تتطلّب إعادة التحقق من PIN (وليس تسجيل دخول
+            // جديد كليًا)، ننتقل مباشرة لخطوة PIN دون طلب البريد/كلمة المرور مجددًا.
+            LaunchedEffect(needsPinRecheck) {
+                if (needsPinRecheck) {
+                    authRepo.currentUserId?.let { vm.beginPinRecheck(it) }
+                }
+            }
             LoginScreen(
                 viewModel = vm,
                 onLoginSuccess = {
