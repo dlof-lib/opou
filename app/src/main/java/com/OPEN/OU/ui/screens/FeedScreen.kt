@@ -30,7 +30,9 @@ fun FeedScreen(
     onOpenProfile: (String) -> Unit,
     onOpenComments: (Post) -> Unit,
     onCreatePost: () -> Unit,
-    onEditPost: (Post) -> Unit = {}
+    onEditPost: (Post) -> Unit = {},
+    onOpenThread: (String) -> Unit = {},
+    onContinueThread: (Post) -> Unit = {}
 ) {
     var tab by remember { mutableStateOf(0) }
     val feed by viewModel.feed.collectAsState()
@@ -130,6 +132,10 @@ fun FeedScreen(
                                 } else null,
                                 onDeletePost = if (viewModel.currentUid != null && viewModel.currentUid == post.authorId) {
                                     { viewModel.deletePost(post) }
+                                } else null,
+                                onOpenThread = if (post.isThreadPost) onOpenThread else null,
+                                onContinueThread = if (viewModel.currentUid != null && viewModel.currentUid == post.authorId) {
+                                    { onContinueThread(post) }
                                 } else null
                             )
                         }
