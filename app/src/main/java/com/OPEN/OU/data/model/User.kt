@@ -20,7 +20,11 @@ data class User(
     val paragraphsCount: Int = 0,     // عدد الفقرات (المنشورات)
     val tekersCount: Int = 0,         // عدد المتابعين (تيكرز)
     val tekingCount: Int = 0,         // عدد من يتابعهم المستخدم (تيكينغ)
-    val shaabiyaScore: Long = 0L,     // مجموع نقاط الشعبية
+    val shaabiyaScore: Long = 0L,     // مجموع نقاط الشعبية — يُحسب عبر UserFameAlgorithm (راجع توثيقه)
+    /** مجموع وزن كل التفاعلات (إعجاب/تيك/تعليق) التي جمعتها كل فقرات هذا المستخدم عبر الزمن —
+     *  رقم تراكمي "مدى الحياة" لا يتناقص أبدًا (بعكس shaabiyaScore على الفقرة الواحدة الذي
+     *  يتخامد مع الوقت)، ويُستخدم كمُدخل خام لحساب شهرة المستخدم عبر UserFameAlgorithm. */
+    val totalEngagementScore: Long = 0L,
 
     val verified: Boolean = false,
 
