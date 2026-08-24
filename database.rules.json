@@ -33,6 +33,39 @@
         "language": {
           ".write": "auth != null && auth.uid === $uid",
           ".validate": "newData.isString() && (newData.val() === 'ar' || newData.val() === 'en')"
+        },
+
+        "twoFactorPinHash": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "newData.isString() && newData.val().length <= 128"
+        },
+        "accountStatus": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "newData.isString() && (newData.val() === 'ACTIVE' || newData.val() === 'DEACTIVATED')"
+        },
+        "customButtons": {
+          ".write": "auth != null && auth.uid === $uid"
+        },
+        "socialLinks": {
+          ".write": "auth != null && auth.uid === $uid"
+        },
+        "categories": {
+          ".write": "auth != null && auth.uid === $uid"
+        },
+        "pinnedPostId": {
+          ".write": "auth != null && auth.uid === $uid"
+        },
+        "isPrivateRoom": {
+          ".write": "auth != null && auth.uid === $uid"
+        },
+        "hideLastSeen": {
+          ".write": "auth != null && auth.uid === $uid"
+        },
+        "whoCanComment": {
+          ".write": "auth != null && auth.uid === $uid"
+        },
+        "lastSeenAt": {
+          ".write": "auth != null && auth.uid === $uid"
         }
       }
     },
@@ -127,6 +160,24 @@
       "$uid": {
         ".read": true,
         ".write": "auth != null"
+      }
+    },
+
+    "blocks": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$targetUid": {
+          ".write": "auth != null && auth.uid === $uid"
+        }
+      }
+    },
+
+    "blockedBy": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$blockerUid": {
+          ".write": "auth != null && auth.uid === $blockerUid"
+        }
       }
     },
 
