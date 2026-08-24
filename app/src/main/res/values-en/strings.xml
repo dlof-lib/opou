@@ -72,4 +72,12 @@
     <string name="no_posts_yet">No paragraphs yet — be the first to post!</string>
     <string name="no_trending_yet">No trending paragraphs yet</string>
     <string name="no_comments_yet">No comments yet — be the first to comment</string>
+
+    <!-- App shortcuts (long-press the launcher icon on the home screen) -->
+    <string name="shortcut_new_post_short">New paragraph</string>
+    <string name="shortcut_new_post_long">Create a new paragraph</string>
+    <string name="shortcut_tekers_short">Tekers</string>
+    <string name="shortcut_tekers_long">Open Tekers</string>
+    <string name="shortcut_account_short">My room</string>
+    <string name="shortcut_account_long">Open my room</string>
 </resources>
