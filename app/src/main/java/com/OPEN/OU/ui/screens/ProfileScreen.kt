@@ -8,9 +8,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.PersonRemove
@@ -24,17 +28,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.OPEN.OU.R
+import com.OPEN.OU.data.model.ReactionType
 import com.OPEN.OU.data.repository.AuthRepository
 import com.OPEN.OU.ui.components.Base64Image
 import com.OPEN.OU.ui.components.GradientText
 import com.OPEN.OU.ui.components.ImagePickerButton
+import com.OPEN.OU.ui.components.PostCard
 import com.OPEN.OU.ui.components.ResponsiveContent
+import com.OPEN.OU.ui.theme.OpouAccentGreen
 import com.OPEN.OU.ui.theme.OpouBrandGradient
 import com.OPEN.OU.util.ImageCodec
 
@@ -56,11 +64,16 @@ fun ProfileScreen(
 ) {
     val room by viewModel.room.collectAsState()
     val isTeking by viewModel.isTeking.collectAsState()
+    val isBlocked by viewModel.isBlocked.collectAsState()
+    val posts by viewModel.posts.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val myUid = remember { AuthRepository().currentUserId }
     val isOwnProfile = myUid != null && myUid == uid
     var avatarError by remember { mutableStateOf<String?>(null) }
+    var showMoreMenu by remember { mutableStateOf(false) }
+    var showBlockConfirm by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val uriHandler = LocalUriHandler.current
 
     LaunchedEffect(uid) { viewModel.load(uid) }
     LaunchedEffect(errorMessage) {
@@ -107,6 +120,23 @@ fun ProfileScreen(
                             Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.settings_open))
                         }
                     }
+                    if (!isOwnProfile && myUid != null) {
+                        Box {
+                            IconButton(onClick = { showMoreMenu = true }) {
+                                Icon(Icons.Filled.MoreVert, contentDescription = "خيارات")
+                            }
+                            DropdownMenu(expanded = showMoreMenu, onDismissRequest = { showMoreMenu = false }) {
+                                DropdownMenuItem(
+                                    text = { Text(if (isBlocked) "إلغاء حظر المستخدم" else "حظر المستخدم") },
+                                    leadingIcon = { Icon(Icons.Filled.Block, contentDescription = null) },
+                                    onClick = {
+                                        showMoreMenu = false
+                                        if (isBlocked) viewModel.toggleBlock(uid) else showBlockConfirm = true
+                                    }
+                                )
+                            }
+                        }
+                    }
                 }
             )
         }
@@ -118,6 +148,7 @@ fun ProfileScreen(
             }
             return@Scaffold
         }
+        val isLocked = user.isPrivateRoom && !isOwnProfile && !isTeking
 
         ResponsiveContent(modifier = Modifier.padding(padding)) {
         Column(
@@ -209,6 +240,15 @@ fun ProfileScreen(
                     label = { Text(user.communityName.ifBlank { stringResource(R.string.official_member_title) }) }
                 )
 
+                if (user.categories.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        user.categories.take(4).forEach { category ->
+                            AssistChip(onClick = {}, label = { Text(category, style = MaterialTheme.typography.labelSmall) })
+                        }
+                    }
+                }
+
                 Spacer(Modifier.height(18.dp))
 
                 // ── بطاقة الإحصائيات ─────────────────────────────────────
@@ -246,27 +286,71 @@ fun ProfileScreen(
 
                 Spacer(Modifier.height(12.dp))
 
-                // ── قسم "السيرة الذاتية" ───────────────────────────────────
-                ProfileSectionCard(
-                    icon = Icons.Filled.Notes,
-                    title = stringResource(R.string.profile_bio_title),
-                    onClick = if (isOwnProfile && user.bio.isBlank()) onEditRoom else null
-                ) {
-                    if (user.bio.isNotBlank()) {
+                if (isLocked) {
+                    ProfileSectionCard(icon = Icons.Filled.Lock, title = "غرفة خاصة") {
                         Text(
-                            user.bio,
+                            "هذه الغرفة خاصة — تابع (تيك) صاحبها لرؤية فقراته وسيرته الذاتية",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                    } else {
-                        Text(
-                            stringResource(
-                                if (isOwnProfile) R.string.profile_bio_empty_self
-                                else R.string.profile_bio_empty_other
-                            ),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                        )
+                    }
+                } else {
+                    // ── قسم "السيرة الذاتية" ───────────────────────────────────
+                    ProfileSectionCard(
+                        icon = Icons.Filled.Notes,
+                        title = stringResource(R.string.profile_bio_title),
+                        onClick = if (isOwnProfile && user.bio.isBlank()) onEditRoom else null
+                    ) {
+                        if (user.bio.isNotBlank()) {
+                            Text(
+                                user.bio,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            Text(
+                                stringResource(
+                                    if (isOwnProfile) R.string.profile_bio_empty_self
+                                    else R.string.profile_bio_empty_other
+                                ),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+
+                    if (user.socialLinks.values.any { it.isNotBlank() }) {
+                        Spacer(Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            user.socialLinks.filterValues { it.isNotBlank() }.forEach { (platform, url) ->
+                                AssistChip(
+                                    onClick = {
+                                        val normalized = if (url.startsWith("http")) url else "https://$url"
+                                        runCatching { uriHandler.openUri(normalized) }
+                                    },
+                                    leadingIcon = { Icon(Icons.Filled.Link, contentDescription = null, tint = OpouAccentGreen, modifier = Modifier.size(14.dp)) },
+                                    label = { Text(platform.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.labelSmall) }
+                                )
+                            }
+                        }
+                    }
+
+                    if (user.customButtons.isNotEmpty()) {
+                        Spacer(Modifier.height(12.dp))
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            user.customButtons.filter { it.label.isNotBlank() && it.url.isNotBlank() }.forEach { button ->
+                                OutlinedButton(
+                                    onClick = {
+                                        val normalized = if (button.url.startsWith("http")) button.url else "https://${button.url}"
+                                        runCatching { uriHandler.openUri(normalized) }
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) { Text(button.label) }
+                            }
+                        }
                     }
                 }
 
@@ -306,10 +390,51 @@ fun ProfileScreen(
                     }
                 }
 
-                Spacer(Modifier.height(24.dp))
+                if (!isLocked && posts.isNotEmpty()) {
+                    Spacer(Modifier.height(22.dp))
+                    Text(
+                        "الفقرات",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(start = 2.dp, bottom = 8.dp)
+                    )
+                }
+
+                Spacer(Modifier.height(if (isLocked || posts.isEmpty()) 24.dp else 0.dp))
+            }
+
+            if (!isLocked) {
+                posts.forEach { post ->
+                    PostCard(
+                        post = post,
+                        currentReaction = ReactionType.NONE,
+                        onReact = {},
+                        onComment = {},
+                        onTek = {},
+                        onOpenProfile = {},
+                        isOwnPost = isOwnProfile,
+                        onTogglePin = if (isOwnProfile) { { viewModel.togglePin(post) } } else null,
+                        onBlockAuthor = if (!isOwnProfile) { { showBlockConfirm = true } } else null
+                    )
+                }
             }
         }
         }
+    }
+
+    if (showBlockConfirm) {
+        AlertDialog(
+            onDismissRequest = { showBlockConfirm = false },
+            title = { Text("حظر ${room?.username.orEmpty()}", fontWeight = FontWeight.Bold) },
+            text = { Text("لن يتمكن هذا المستخدم من رؤية فقراتك أو التفاعل معك، والعكس صحيح. يمكنك إلغاء الحظر لاحقًا.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showBlockConfirm = false
+                    viewModel.toggleBlock(uid)
+                }) { Text("حظر", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { showBlockConfirm = false }) { Text("إلغاء") } }
+        )
     }
 }
 
