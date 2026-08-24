@@ -22,8 +22,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.OPEN.OU.R
+import com.OPEN.OU.data.model.Comment
 import com.OPEN.OU.data.model.ParagraphEmoji
 import com.OPEN.OU.data.model.ParagraphPrivacy
+import com.OPEN.OU.data.model.Post
 import com.OPEN.OU.ui.components.Base64Image
 import com.OPEN.OU.ui.components.ImagePickerButton
 import com.OPEN.OU.util.ImageCodec
@@ -42,66 +44,93 @@ fun CreatePostScreen(
     currentAvatar: String,
     currentAvatarBase64: String = "",
     onDone: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    /** إن كانت غير null، تفتح الشاشة في وضع "تعديل" لفقرة موجودة بدل إنشاء فقرة جديدة. */
+    editingPost: Post? = null,
+    /** إن كانت غير null (ووضع الإنشاء وليس التعديل)، تُنشر الفقرة الجديدة كرد على هذا التعليق. */
+    quotedComment: Comment? = null
 ) {
-    var text by remember { mutableStateOf("") }
+    val isEditing = editingPost != null
+    var text by remember(editingPost?.postId) { mutableStateOf(editingPost?.content.orEmpty()) }
     var attachedImage by remember { mutableStateOf<ImageCodec.EncodedImage?>(null) }
     var imageError by remember { mutableStateOf<String?>(null) }
 
     // ===== تنسيق الفقرة =====
-    var backgroundColor by remember { mutableStateOf("") }
-    var selectedEmoji by remember { mutableStateOf(ParagraphEmoji.NONE) }
-    var textColor by remember { mutableStateOf("") }
-    var textBold by remember { mutableStateOf(false) }
-    var textUnderline by remember { mutableStateOf(false) }
-    var textBackgroundColor by remember { mutableStateOf("") }
+    var backgroundColor by remember { mutableStateOf(editingPost?.backgroundColor.orEmpty()) }
+    var selectedEmoji by remember { mutableStateOf(editingPost?.emoji ?: ParagraphEmoji.NONE) }
+    var textColor by remember { mutableStateOf(editingPost?.textColor.orEmpty()) }
+    var textBold by remember { mutableStateOf(editingPost?.textBold ?: false) }
+    var textUnderline by remember { mutableStateOf(editingPost?.textUnderline ?: false) }
+    var textBackgroundColor by remember { mutableStateOf(editingPost?.textBackgroundColor.orEmpty()) }
     var linkInput by remember { mutableStateOf("") }
-    val links = remember { mutableStateListOf<String>() }
-    var customHtml by remember { mutableStateOf("") }
+    val links = remember { mutableStateListOf<String>().apply { editingPost?.links?.let { addAll(it) } } }
+    var customHtml by remember { mutableStateOf(editingPost?.customHtml.orEmpty()) }
 
     // ===== خصوصية وجدولة =====
-    var privacy by remember { mutableStateOf(ParagraphPrivacy.PUBLIC) }
-    var scheduledAt by remember { mutableStateOf<Long?>(null) }
+    var privacy by remember { mutableStateOf(ParagraphPrivacy.fromValue(editingPost?.privacy ?: "PUBLIC")) }
+    var scheduledAt by remember { mutableStateOf(editingPost?.scheduledAt) }
     var showStylingSheet by remember { mutableStateOf(false) }
     var showPrivacySheet by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.feed_title)) },
+                title = {
+                    Text(
+                        when {
+                            isEditing -> "تعديل الفقرة"
+                            quotedComment != null -> "الرد بفقرة"
+                            else -> stringResource(R.string.feed_title)
+                        }
+                    )
+                },
                 navigationIcon = {
                     TextButton(onClick = onBack) { Text("إلغاء") }
                 },
                 actions = {
-                    ImagePickerButton(
-                        profile = ImageCodec.ImageProfile.POST_IMAGE,
-                        onImageReady = { attachedImage = it; imageError = null },
-                        onError = { imageError = it }
-                    )
+                    if (!isEditing) {
+                        ImagePickerButton(
+                            profile = ImageCodec.ImageProfile.POST_IMAGE,
+                            onImageReady = { attachedImage = it; imageError = null },
+                            onError = { imageError = it }
+                        )
+                    }
                     TextButton(
                         onClick = {
-                            viewModel.publish(
-                                content = text,
-                                authorUsername = currentUsername,
-                                authorAvatar = currentAvatar,
-                                authorAvatarBase64 = currentAvatarBase64,
-                                imageBase64 = attachedImage?.base64.orEmpty(),
-                                backgroundColor = backgroundColor,
-                                emoji = selectedEmoji,
-                                textColor = textColor,
-                                textBold = textBold,
-                                textUnderline = textUnderline,
-                                textBackgroundColor = textBackgroundColor,
-                                links = links.filter { it.isNotBlank() },
-                                customHtml = SafeHtml.sanitizeInput(customHtml),
-                                privacy = privacy.name,
-                                scheduledAt = scheduledAt,
-                                onDone = onDone
-                            )
+                            if (isEditing) {
+                                viewModel.editPost(
+                                    postId = editingPost!!.postId,
+                                    newContent = text,
+                                    onDone = onDone
+                                )
+                            } else {
+                                viewModel.publish(
+                                    content = text,
+                                    authorUsername = currentUsername,
+                                    authorAvatar = currentAvatar,
+                                    authorAvatarBase64 = currentAvatarBase64,
+                                    imageBase64 = attachedImage?.base64.orEmpty(),
+                                    backgroundColor = backgroundColor,
+                                    emoji = selectedEmoji,
+                                    textColor = textColor,
+                                    textBold = textBold,
+                                    textUnderline = textUnderline,
+                                    textBackgroundColor = textBackgroundColor,
+                                    links = links.filter { it.isNotBlank() },
+                                    customHtml = SafeHtml.sanitizeInput(customHtml),
+                                    privacy = privacy.name,
+                                    scheduledAt = scheduledAt,
+                                    replyCommentId = quotedComment?.commentId.orEmpty(),
+                                    replyCommentAuthorId = quotedComment?.authorId.orEmpty(),
+                                    replyCommentAuthorUsername = quotedComment?.authorUsername.orEmpty(),
+                                    replyCommentContent = quotedComment?.content.orEmpty(),
+                                    onDone = onDone
+                                )
+                            }
                         },
                         enabled = (text.isNotBlank() || attachedImage != null) && !viewModel.isPosting
                     ) {
-                        Text(stringResource(R.string.post_button))
+                        Text(if (isEditing) "حفظ" else stringResource(R.string.post_button))
                     }
                 }
             )
@@ -113,6 +142,35 @@ fun CreatePostScreen(
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
+            if (quotedComment != null && !isEditing) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
+                    )
+                ) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text(
+                            "ردًا على تعليق @${quotedComment.authorUsername}",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            quotedComment.content,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 3
+                        )
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+            }
+
             val previewBg = backgroundColor.toColorOrNull()
             val previewTextColor = textColor.toColorOrNull() ?: MaterialTheme.colorScheme.onSurface
             val previewTextBg = textBackgroundColor.toColorOrNull()
