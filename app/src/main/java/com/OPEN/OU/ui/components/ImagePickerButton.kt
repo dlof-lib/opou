@@ -1,5 +1,6 @@
 package com.OPEN.OU.ui.components
 
+import android.graphics.Bitmap
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -23,8 +24,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * زر اختيار صورة من المعرض، يقوم تلقائيًا بضغطها وترميزها Base64 في الخلفية
- * (Dispatchers.Default) دون تجميد الواجهة، ثم يُعيد النتيجة الجاهزة للتخزين والعرض.
+ * زر اختيار صورة من المعرض. تدفّق العمل الآن:
+ * 1) اختيار صورة من المعرض.
+ * 2) تحميل نسخة عاملة منها (بخيط خلفي) وفتح أداة قص [ImageCropperDialog] بإطار
+ *    ثابت النسبة خاص بنوع الاستخدام (دائري للصورة الرمزية 1:1، مستطيل عريض
+ *    للبانر 3:1، مستطيل عمودي لصورة الفقرة 4:5 — راجع ImageCodec.ImageProfile).
+ * 3) بعد تأكيد القص، تُضغط الصورة المقصوصة وتُرمّز Base64 بخيط خلفي أيضًا
+ *    (Dispatchers.Default) دون تجميد الواجهة، إلى المقاس الدقيق الإلزامي لهذا
+ *    النمط، ثم تُعاد النتيجة الجاهزة للتخزين والعرض عبر [onImageReady].
  */
 @Composable
 fun ImagePickerButton(
@@ -36,6 +43,7 @@ fun ImagePickerButton(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var isProcessing by remember { mutableStateOf(false) }
+    var cropSource by remember { mutableStateOf<Bitmap?>(null) }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -44,11 +52,11 @@ fun ImagePickerButton(
         isProcessing = true
         scope.launch {
             val result = withContext(Dispatchers.Default) {
-                runCatching { ImageCodec.encode(context, uri, profile) }
+                runCatching { ImageCodec.loadWorkingBitmap(context, uri) }
             }
             isProcessing = false
-            result.onSuccess(onImageReady)
-                .onFailure { onError(it.message ?: "تعذّرت معالجة الصورة") }
+            result.onSuccess { cropSource = it }
+                .onFailure { onError(it.message ?: "تعذّرت قراءة الصورة") }
         }
     }
 
@@ -81,5 +89,30 @@ fun ImagePickerButton(
                 modifier = Modifier.size(18.dp)
             )
         }
+    }
+
+    cropSource?.let { source ->
+        ImageCropperDialog(
+            source = source,
+            profile = profile,
+            onCancel = {
+                source.recycle()
+                cropSource = null
+            },
+            onCropped = { cropped ->
+                cropSource = null
+                isProcessing = true
+                scope.launch {
+                    val result = withContext(Dispatchers.Default) {
+                        runCatching { ImageCodec.encodeBitmap(cropped, profile) }
+                    }
+                    if (cropped !== source) cropped.recycle()
+                    source.recycle()
+                    isProcessing = false
+                    result.onSuccess(onImageReady)
+                        .onFailure { onError(it.message ?: "تعذّرت معالجة الصورة") }
+                }
+            }
+        )
     }
 }
