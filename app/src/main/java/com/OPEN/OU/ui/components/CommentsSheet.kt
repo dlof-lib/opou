@@ -11,7 +11,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChatBubbleOutline
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FormatQuote
+import androidx.compose.material.icons.filled.Reply
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -53,10 +59,15 @@ fun CommentsSheet(
     viewModel: CommentsViewModel,
     onDismiss: () -> Unit,
     postAuthorId: String? = null,
-    currentAvatarBase64: String = ""
+    currentAvatarBase64: String = "",
+    onOpenProfile: (String) -> Unit = {},
+    /** يُستدعى عند اختيار "الرد بفقرة" على تعليق — يحمل الغرض للشاشة الأم لفتح إنشاء فقرة جديدة مقتبسة عنه. */
+    onQuoteAsParagraph: ((Comment) -> Unit)? = null
 ) {
     val comments by viewModel.comments.collectAsState()
+    val likedCommentIds by viewModel.likedCommentIds.collectAsState()
     var text by remember { mutableStateOf("") }
+    var replyingTo by remember { mutableStateOf<Comment?>(null) }
 
     LaunchedEffect(postId) { viewModel.load(postId) }
 
@@ -189,12 +200,50 @@ fun CommentsSheet(
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             items(comments, key = { it.commentId }) { comment ->
-                                CommentRow(comment, isPostAuthor = postAuthorId != null && comment.authorId == postAuthorId)
+                                CommentRow(
+                                    comment = comment,
+                                    isPostAuthor = postAuthorId != null && comment.authorId == postAuthorId,
+                                    isLiked = comment.commentId in likedCommentIds,
+                                    canDelete = viewModel.currentUid != null &&
+                                        (viewModel.currentUid == comment.authorId || viewModel.currentUid == postAuthorId),
+                                    onLike = { viewModel.toggleLike(postId, comment, currentUsername) },
+                                    onReply = { replyingTo = comment },
+                                    onQuoteAsParagraph = onQuoteAsParagraph?.let { { it(comment) } },
+                                    onDelete = { viewModel.deleteComment(postId, comment.commentId) },
+                                    onOpenProfile = onOpenProfile
+                                )
                             }
                         }
                     }
 
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
+
+                    replyingTo?.let { reply ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Filled.Reply,
+                                contentDescription = null,
+                                tint = OpouAccentGreen,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                "ردًا على @${reply.authorUsername}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = OpouAccentGreen,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.weight(1f)
+                            )
+                            IconButton(onClick = { replyingTo = null }, modifier = Modifier.size(22.dp)) {
+                                Icon(Icons.Filled.Close, contentDescription = "إلغاء الرد", modifier = Modifier.size(14.dp))
+                            }
+                        }
+                    }
 
                     // حقل الكتابة
                     Row(
@@ -234,14 +283,16 @@ fun CommentsSheet(
                                 )
                                 .clickable(enabled = canSend) {
                                     viewModel.send(
-                                        postId,
-                                        text,
-                                        currentUsername,
-                                        currentAvatar,
-                                        postAuthorId,
-                                        currentAvatarBase64
+                                        postId = postId,
+                                        content = text,
+                                        username = currentUsername,
+                                        avatar = currentAvatar,
+                                        postAuthorId = postAuthorId,
+                                        avatarBase64 = currentAvatarBase64,
+                                        replyTo = replyingTo
                                     )
                                     text = ""
+                                    replyingTo = null
                                 },
                             contentAlignment = Alignment.Center
                         ) {
@@ -268,14 +319,26 @@ private fun solidBrush(color: Color) = androidx.compose.ui.graphics.Brush.linear
  * ووقت نسبي أنيق في نفس السطر. تعليقات صاحب الفقرة تحمل شارة صغيرة مميّزة.
  */
 @Composable
-private fun CommentRow(comment: Comment, isPostAuthor: Boolean = false) {
+private fun CommentRow(
+    comment: Comment,
+    isPostAuthor: Boolean = false,
+    isLiked: Boolean = false,
+    canDelete: Boolean = false,
+    onLike: () -> Unit = {},
+    onReply: () -> Unit = {},
+    onQuoteAsParagraph: (() -> Unit)? = null,
+    onDelete: () -> Unit = {},
+    onOpenProfile: (String) -> Unit = {}
+) {
+    var showDeleteConfirm by remember { mutableStateOf(false) }
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
             MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
-        )
+        ),
+        modifier = if (comment.isReply) Modifier.padding(start = 24.dp) else Modifier
     ) {
         Row(Modifier.height(IntrinsicSize.Min).padding(end = 12.dp)) {
             Box(
@@ -298,7 +361,8 @@ private fun CommentRow(comment: Comment, isPostAuthor: Boolean = false) {
                             comment.authorUsername,
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.labelLarge,
-                            color = OpouAccentGreen
+                            color = OpouAccentGreen,
+                            modifier = Modifier.clickable { onOpenProfile(comment.authorId) }
                         )
                         if (isPostAuthor) {
                             Spacer(Modifier.width(6.dp))
@@ -322,16 +386,106 @@ private fun CommentRow(comment: Comment, isPostAuthor: Boolean = false) {
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    if (comment.isReply && comment.replyToUsername.isNotBlank()) {
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = "ردًا على @${comment.replyToUsername}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     Spacer(Modifier.height(4.dp))
-                    Text(
-                        comment.content,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        lineHeight = MaterialTheme.typography.bodyMedium.lineHeight
+                    MentionAwareText(
+                        text = comment.content,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = MaterialTheme.colorScheme.onSurface,
+                            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight
+                        ),
+                        onOpenProfile = onOpenProfile
                     )
+
+                    Spacer(Modifier.height(6.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable(onClick = onLike)
+                        ) {
+                            Icon(
+                                if (isLiked) Icons.Filled.Star else Icons.Outlined.Star,
+                                contentDescription = "إعجاب",
+                                tint = if (isLiked) com.OPEN.OU.ui.theme.OpouStar else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            if (comment.likesCount > 0) {
+                                Spacer(Modifier.width(3.dp))
+                                Text(
+                                    comment.likesCount.toString(),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (isLiked) com.OPEN.OU.ui.theme.OpouStar else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        Spacer(Modifier.width(16.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable(onClick = onReply)
+                        ) {
+                            Icon(
+                                Icons.Filled.Reply,
+                                contentDescription = "رد",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(Modifier.width(3.dp))
+                            Text("رد", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        if (onQuoteAsParagraph != null) {
+                            Spacer(Modifier.width(16.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.clickable(onClick = onQuoteAsParagraph)
+                            ) {
+                                Icon(
+                                    Icons.Filled.FormatQuote,
+                                    contentDescription = "الرد بفقرة",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(Modifier.width(3.dp))
+                                Text("رد بفقرة", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        if (canDelete) {
+                            Spacer(Modifier.width(16.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.clickable { showDeleteConfirm = true }
+                            ) {
+                                Icon(
+                                    Icons.Filled.Delete,
+                                    contentDescription = "حذف",
+                                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("حذف التعليق؟") },
+            confirmButton = {
+                TextButton(onClick = { showDeleteConfirm = false; onDelete() }) {
+                    Text("حذف", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("إلغاء") } }
+        )
     }
 }
 
