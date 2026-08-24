@@ -53,14 +53,16 @@ class AuthRepository(
 
     /** إعادة التوثيق بكلمة المرور الحالية — مطلوبة قبل عمليات حسّاسة (تغيير كلمة المرور/حذف الحساب)
      * لأن Firebase Auth يرفضها إن لم يكن تسجيل الدخول "حديثًا". */
-    suspend fun reauthenticate(password: String): Result<Unit> = try {
-        val user = auth.currentUser ?: return Result.failure(IllegalStateException("لا يوجد مستخدم مسجّل دخول"))
-        val email = user.email ?: return Result.failure(IllegalStateException("لا يوجد بريد مرتبط بالحساب"))
-        val credential = EmailAuthProvider.getCredential(email, password)
-        user.reauthenticate(credential).await()
-        Result.success(Unit)
-    } catch (e: Exception) {
-        Result.failure(e)
+    suspend fun reauthenticate(password: String): Result<Unit> {
+        return try {
+            val user = auth.currentUser ?: return Result.failure(IllegalStateException("لا يوجد مستخدم مسجّل دخول"))
+            val email = user.email ?: return Result.failure(IllegalStateException("لا يوجد بريد مرتبط بالحساب"))
+            val credential = EmailAuthProvider.getCredential(email, password)
+            user.reauthenticate(credential).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     /** تغيير كلمة المرور — يعيد التوثيق تلقائيًا أولًا بكلمة المرور الحالية. */
