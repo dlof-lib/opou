@@ -50,9 +50,7 @@ fun ReactionBar(
     modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -62,8 +60,7 @@ fun ReactionBar(
             count = likesCount,
             selected = currentReaction == ReactionType.LIKE,
             activeColor = OpouStar,
-            onClick = { onReact(if (currentReaction == ReactionType.LIKE) ReactionType.NONE else ReactionType.LIKE) },
-            modifier = Modifier.weight(1f)
+            onClick = { onReact(if (currentReaction == ReactionType.LIKE) ReactionType.NONE else ReactionType.LIKE) }
         )
         IconReactionButton(
             icon = Icons.Filled.HeartBroken,
@@ -71,8 +68,7 @@ fun ReactionBar(
             count = dislikesCount,
             selected = currentReaction == ReactionType.DISLIKE,
             activeColor = OpouBrokenHeart,
-            onClick = { onReact(if (currentReaction == ReactionType.DISLIKE) ReactionType.NONE else ReactionType.DISLIKE) },
-            modifier = Modifier.weight(1f)
+            onClick = { onReact(if (currentReaction == ReactionType.DISLIKE) ReactionType.NONE else ReactionType.DISLIKE) }
         )
         IconReactionButton(
             icon = Icons.Filled.ChatBubbleOutline,
@@ -80,8 +76,7 @@ fun ReactionBar(
             count = commentsCount,
             selected = false,
             activeColor = OpouAccentBlue,
-            onClick = onComment,
-            modifier = Modifier.weight(1f)
+            onClick = onComment
         )
         IconReactionButton(
             icon = Icons.Filled.Repeat,
@@ -89,8 +84,7 @@ fun ReactionBar(
             count = teksCount,
             selected = false,
             activeColor = OpouAccentGreen,
-            onClick = onTek,
-            modifier = Modifier.weight(1f)
+            onClick = onTek
         )
     }
 }
@@ -114,28 +108,27 @@ private fun IconReactionButton(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
-            .padding(horizontal = 4.dp, vertical = 6.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(if (selected) activeColor.copy(alpha = 0.12f) else Color.Transparent)
             .clickable(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() },
                 onClick = onClick
             )
-            .padding(horizontal = 10.dp, vertical = 8.dp)
+            .padding(horizontal = 8.dp, vertical = 6.dp)
     ) {
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
             tint = if (selected) activeColor else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
-            modifier = Modifier.size(19.dp).scale(scale)
+            modifier = Modifier.size(16.dp).scale(scale)
         )
         if (count > 0) {
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(5.dp))
             Text(
                 text = count.toString(),
                 color = if (selected) activeColor else MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelSmall,
                 fontWeight = if (selected) androidx.compose.ui.text.font.FontWeight.SemiBold else androidx.compose.ui.text.font.FontWeight.Normal
             )
         }
