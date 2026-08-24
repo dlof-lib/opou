@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.OPEN.OU.ui.components.Base64Image
 import com.OPEN.OU.ui.components.ImagePickerButton
+import com.OPEN.OU.ui.components.ResponsiveContent
 import com.OPEN.OU.ui.theme.OpouBrandGradient
 import com.OPEN.OU.util.ImageCodec
 
@@ -80,14 +81,14 @@ fun EditRoomScreen(
             )
         }
     ) { padding ->
+        ResponsiveContent(modifier = Modifier.padding(padding)) {
         Column(
             Modifier
-                .padding(padding)
                 .verticalScroll(rememberScrollState())
                 .fillMaxSize()
         ) {
             // البانر — بارتفاع أكبر مساحة، مع زر تغيير واضح في الزاوية
-            Box(Modifier.fillMaxWidth().height(150.dp)) {
+            Box(Modifier.fillMaxWidth().height(130.dp)) {
                 val user = room
                 when {
                     pendingBanner != null -> Base64Image(
@@ -118,11 +119,11 @@ fun EditRoomScreen(
             }
 
             // الصورة الرمزية (تتراكب فوق حافة البانر مثل يوتيوب/إنستغرام)
-            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
-                Box(Modifier.offset(y = (-40).dp)) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                Box(Modifier.offset(y = (-32).dp)) {
                     val user = room
                     val avatarModifier = Modifier
-                        .size(88.dp)
+                        .size(72.dp)
                         .clip(CircleShape)
                         .border(3.dp, MaterialTheme.colorScheme.background, CircleShape)
                         .padding(3.dp)
@@ -176,6 +177,7 @@ fun EditRoomScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
+        }
         }
     }
 }
