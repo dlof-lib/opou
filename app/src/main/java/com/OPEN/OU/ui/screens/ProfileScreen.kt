@@ -71,6 +71,17 @@ fun ProfileScreen(
     }
 
     Scaffold(
+        // عند العرض كتبويب "الحساب" (showBackButton = false) تكون الشاشة
+        // متداخلة داخل الـ Scaffold الخارجي في OpouNavGraph الذي يحجز مساحة
+        // الشريط السفلي فعليًا، فلا داعي لأن يحجز هذا الـ Scaffold الداخلي
+        // مساحة إضافية لشريط التنقّل السفلي للنظام (نفس مشكلة الشريط العلوي
+        // المضاعفة، لكن بالأسفل هذه المرة). عند العرض كشاشة مستقلة (فتح ملف
+        // شخص آخر) نُبقي السلوك الافتراضي لأنها غير متداخلة.
+        contentWindowInsets = if (!showBackButton) {
+            WindowInsets(0, 0, 0, 0)
+        } else {
+            ScaffoldDefaults.contentWindowInsets
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
