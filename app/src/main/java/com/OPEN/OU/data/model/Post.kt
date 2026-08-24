@@ -58,8 +58,23 @@ data class Post(
     val scheduledAt: Long? = null,
 
     /** فقرة مثبّتة أعلى غرفة صاحبها — راجع User.pinnedPostId (تحديث واحد يبقيهما متطابقين) */
-    val isPinned: Boolean = false
+    val isPinned: Boolean = false,
+
+    /** إن لم تكن فارغة، فهذه فقرة مُعدَّلة — وقت آخر تعديل على المحتوى */
+    val editedAt: Long? = null,
+
+    // ===== فقرة ترد على تعليق (اقتباس تعليق كفقرة جديدة) =====
+    /** معرّف التعليق المُقتَبس إن كانت هذه الفقرة نُشرت ردًا على تعليق، فارغ إن لم تكن كذلك */
+    val replyCommentId: String = "",
+    /** معرّف صاحب التعليق المُقتَبس */
+    val replyCommentAuthorId: String = "",
+    /** اسم صاحب التعليق المُقتَبس */
+    val replyCommentAuthorUsername: String = "",
+    /** نص التعليق المُقتَبس وقت النشر (لقطة ثابتة حتى لو حُذف التعليق لاحقًا) */
+    val replyCommentContent: String = ""
 ) {
+    /** هل هذه فقرة رد على تعليق؟ */
+    val isReplyToComment: Boolean get() = replyCommentId.isNotBlank()
     /** هل الفقرة لا تزال بانتظار موعد نشرها المجدول؟ */
     fun isScheduledForFuture(nowMillis: Long = System.currentTimeMillis()): Boolean =
         scheduledAt != null && scheduledAt > nowMillis
