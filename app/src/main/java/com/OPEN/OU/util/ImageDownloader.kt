@@ -42,14 +42,23 @@ object ImageDownloader {
         if (!base64.isNullOrBlank()) {
             return runCatching {
                 val bytes = NativeBridge.decodeBase64(base64)
-                if (bytes.isEmpty()) null else BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                if (bytes.isEmpty() || bytes.size > 8 * 1024 * 1024 || !NativeBridge.validateImageBytes(bytes)) {
+                    null
+                } else {
+                    // Native fingerprint avoids reprocessing identical payloads in future cache layers.
+                    NativeBridge.fastByteHash(bytes)
+                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                }
             }.getOrNull()
         }
         if (!imageUrl.isNullOrBlank()) {
             return runCatching {
                 val request = ImageRequest.Builder(context)
                     .data(imageUrl)
-                    .allowHardware(false) // نحتاج بت‌ماب قابلة للقراءة مباشرة للحفظ
+                    .diskCachePolicy(coil.request.CachePolicy.ENABLED)
+                    .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
+                    .networkCachePolicy(coil.request.CachePolicy.ENABLED)
+                    .allowHardware(false) // نحتاج Bitmap قابلة للقراءة مباشرة للحفظ
                     .build()
                 val result = context.imageLoader.execute(request)
                 (result.drawable as? BitmapDrawable)?.bitmap
