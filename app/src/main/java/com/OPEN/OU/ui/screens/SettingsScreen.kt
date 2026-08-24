@@ -7,10 +7,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.PrivacyTip
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -33,7 +35,9 @@ import com.OPEN.OU.util.AppLanguage
 fun SettingsScreen(
     viewModel: SettingsViewModel,
     onBack: () -> Unit,
-    onLoggedOut: () -> Unit
+    onLoggedOut: () -> Unit,
+    onOpenAccountSettings: () -> Unit = {},
+    onOpenPrivacySettings: () -> Unit = {}
 ) {
     val language by viewModel.language.collectAsState()
     var showLogoutConfirm by remember { mutableStateOf(false) }
@@ -73,6 +77,13 @@ fun SettingsScreen(
             SectionLabel(stringResource(R.string.settings_section_privacy))
             SettingsCard {
                 SettingsRow(
+                    icon = Icons.Filled.Shield,
+                    title = "الخصوصية",
+                    subtitle = "الغرفة الخاصة، الحظر، التعليقات",
+                    onClick = onOpenPrivacySettings
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                SettingsRow(
                     icon = Icons.Filled.PrivacyTip,
                     title = stringResource(R.string.privacy_policy_title),
                     subtitle = null,
@@ -83,6 +94,13 @@ fun SettingsScreen(
             Spacer(Modifier.height(20.dp))
             SectionLabel(stringResource(R.string.settings_section_account))
             SettingsCard {
+                SettingsRow(
+                    icon = Icons.Filled.AccountCircle,
+                    title = "إعدادات الحساب",
+                    subtitle = "كلمة المرور، التحقق بخطوتين، تعطيل/حذف الحساب",
+                    onClick = onOpenAccountSettings
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
                 SettingsRow(
                     icon = Icons.Filled.Logout,
                     title = stringResource(R.string.settings_logout),
