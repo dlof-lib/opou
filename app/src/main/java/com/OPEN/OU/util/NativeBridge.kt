@@ -34,6 +34,9 @@ object NativeBridge {
     private external fun fingerprintNative(content: String): Long
     private external fun encodeBase64Native(data: ByteArray): String
     private external fun decodeBase64Native(encoded: String): ByteArray
+    private external fun reactionDeltaNative(oldType: Int, newType: Int): Long
+    private external fun fastByteHashNative(data: ByteArray): Long
+    private external fun validateImageBytesNative(data: ByteArray): Boolean
 
     // ---------------------------------------------------------------------
     // واجهة عامة آمنة (Public API) — تُستخدم من بقية التطبيق
@@ -81,12 +84,56 @@ object NativeBridge {
         }
     }
 
+    /** فرق الشعبية لتفاعل واحد: NONE=0, LIKE=1, DISLIKE=2. */
+    fun reactionDelta(oldType: Int, newType: Int): Long =
+        try {
+            if (isNativeAvailable) reactionDeltaNative(oldType, newType)
+            else fallbackReactionDelta(oldType, newType)
+        } catch (_: Throwable) {
+            fallbackReactionDelta(oldType, newType)
+        }
+
+    /** بصمة سريعة للبيانات المنزلة لمنع معالجة نفس الملف مرتين. */
+    fun fastByteHash(data: ByteArray): Long =
+        try {
+            if (isNativeAvailable) fastByteHashNative(data) else fallbackByteHash(data)
+        } catch (_: Throwable) {
+            fallbackByteHash(data)
+        }
+
+    /** تحقق سريع من ترويسة صور JPEG/PNG/WebP قبل تمريرها إلى BitmapFactory. */
+    fun validateImageBytes(data: ByteArray): Boolean =
+        try {
+            if (isNativeAvailable) validateImageBytesNative(data) else fallbackValidateImage(data)
+        } catch (_: Throwable) {
+            fallbackValidateImage(data)
+        }
+
     // ---------------------------------------------------------------------
     // نسخ احتياطية بلغة Kotlin خالصة (لا تعتمد على JNI إطلاقًا)
     // ---------------------------------------------------------------------
 
     private fun fallbackShaabiyaScore(likes: Int, dislikes: Int, teks: Int, comments: Int): Long =
         (likes.toLong() * 3) + (teks.toLong() * 5) + comments - dislikes
+
+    private fun fallbackReactionDelta(oldType: Int, newType: Int): Long {
+        fun weight(type: Int) = when (type) { 1 -> 3L; 2 -> -1L; else -> 0L }
+        return weight(newType) - weight(oldType)
+    }
+
+    private fun fallbackByteHash(data: ByteArray): Long {
+        var h = -3750763034362895579L
+        for (b in data) h = (h xor (b.toLong() and 0xffL)) * 1099511628211L
+        return h
+    }
+
+    private fun fallbackValidateImage(data: ByteArray): Boolean {
+        if (data.size < 8) return false
+        val png = data[0] == 0x89.toByte() && data[1] == 0x50 && data[2] == 0x4E && data[3] == 0x47.toByte()
+        val jpg = data[0] == 0xFF.toByte() && data[1] == 0xD8.toByte()
+        val webp = data.size >= 12 && data[0] == 'R'.code.toByte() && data[1] == 'I'.code.toByte() && data[2] == 'F'.code.toByte() && data[3] == 'F'.code.toByte() && data[8] == 'W'.code.toByte() && data[9] == 'E'.code.toByte() && data[10] == 'B'.code.toByte() && data[11] == 'P'.code.toByte()
+        return png || jpg || webp
+    }
 
     private fun fallbackFingerprint(content: String): Long {
         var hash = 5381L
