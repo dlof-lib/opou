@@ -2,8 +2,12 @@ package com.OPEN.OU.ui.screens
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.OPEN.OU.data.model.CustomButton
+import com.OPEN.OU.data.model.Post
 import com.OPEN.OU.data.model.User
 import com.OPEN.OU.data.repository.AuthRepository
+import com.OPEN.OU.data.repository.BlockRepository
+import com.OPEN.OU.data.repository.PostRepository
 import com.OPEN.OU.data.repository.UserRepository
 import com.OPEN.OU.network.PhpBridgeRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,6 +18,8 @@ import kotlinx.coroutines.launch
 class ProfileViewModel(
     private val userRepo: UserRepository = UserRepository(),
     private val authRepo: AuthRepository = AuthRepository(),
+    private val postRepo: PostRepository = PostRepository(),
+    private val blockRepo: BlockRepository = BlockRepository(),
     private val phpBridge: PhpBridgeRepository = PhpBridgeRepository()
 ) : ViewModel() {
 
@@ -23,10 +29,18 @@ class ProfileViewModel(
     private val _isTeking = MutableStateFlow(false)
     val isTeking: StateFlow<Boolean> = _isTeking.asStateFlow()
 
+    private val _isBlocked = MutableStateFlow(false)
+    val isBlocked: StateFlow<Boolean> = _isBlocked.asStateFlow()
+
+    private val _posts = MutableStateFlow<List<Post>>(emptyList())
+    val posts: StateFlow<List<Post>> = _posts.asStateFlow()
+
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
     fun clearError() { _errorMessage.value = null }
+
+    val currentUid: String? get() = authRepo.currentUserId
 
     fun load(uid: String) {
         viewModelScope.launch {
@@ -37,6 +51,44 @@ class ProfileViewModel(
             viewModelScope.launch {
                 _isTeking.value = userRepo.isTeking(myUid, uid)
             }
+            viewModelScope.launch {
+                _isBlocked.value = runCatching { blockRepo.isBlocked(myUid, uid) }.getOrDefault(false)
+            }
+        }
+        viewModelScope.launch {
+            val followingIds = myUid?.let { runCatching { userRepo.getTekingIds(it).toSet() }.getOrDefault(emptySet()) } ?: emptySet()
+            val mutedIds = myUid?.let { runCatching { blockRepo.getMutedIds(it) }.getOrDefault(emptySet()) } ?: emptySet()
+            postRepo.observeUserPosts(uid, myUid, followingIds, mutedIds).collect { _posts.value = it }
+        }
+    }
+
+    fun toggleBlock(targetUid: String) {
+        val myUid = authRepo.currentUserId ?: return
+        if (myUid == targetUid) return
+        viewModelScope.launch {
+            val goingToBlock = !_isBlocked.value
+            _isBlocked.value = goingToBlock
+            runCatching {
+                if (goingToBlock) {
+                    blockRepo.block(myUid, targetUid)
+                    if (_isTeking.value) { userRepo.unTek(myUid, targetUid); _isTeking.value = false }
+                } else {
+                    blockRepo.unblock(myUid, targetUid)
+                }
+            }.onFailure {
+                _isBlocked.value = !goingToBlock
+                _errorMessage.value = it.message ?: "تعذّر إتمام العملية"
+            }
+        }
+    }
+
+    fun togglePin(post: Post) {
+        val uid = authRepo.currentUserId ?: return
+        if (uid != post.authorId) return
+        viewModelScope.launch {
+            runCatching {
+                postRepo.setPinned(uid, post.postId, !post.isPinned, _room.value?.pinnedPostId)
+            }.onFailure { _errorMessage.value = it.message ?: "تعذّر تثبيت الفقرة" }
         }
     }
 
@@ -104,6 +156,27 @@ class ProfileViewModel(
                     )
                 )
             }.onFailure { _errorMessage.value = it.message ?: "تعذّر حفظ بيانات الغرفة" }
+        }
+    }
+
+    fun updateCategories(uid: String, categories: List<String>) {
+        viewModelScope.launch {
+            runCatching { userRepo.updateCategories(uid, categories) }
+                .onFailure { _errorMessage.value = it.message ?: "تعذّر حفظ التصنيفات" }
+        }
+    }
+
+    fun updateSocialLinks(uid: String, links: Map<String, String>) {
+        viewModelScope.launch {
+            runCatching { userRepo.updateSocialLinks(uid, links) }
+                .onFailure { _errorMessage.value = it.message ?: "تعذّر حفظ روابط التواصل" }
+        }
+    }
+
+    fun updateCustomButtons(uid: String, buttons: List<CustomButton>) {
+        viewModelScope.launch {
+            runCatching { userRepo.updateCustomButtons(uid, buttons) }
+                .onFailure { _errorMessage.value = it.message ?: "تعذّر حفظ الأزرار المخصّصة" }
         }
     }
 }
