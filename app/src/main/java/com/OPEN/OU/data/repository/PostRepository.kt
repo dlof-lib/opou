@@ -23,8 +23,6 @@ class PostRepository(
     private val reactionsRef get() = db.getReference(FirebasePaths.REACTIONS)
     private val usersRef get() = db.getReference(FirebasePaths.USERS)
     private val userReactionsRef get() = db.getReference(FirebasePaths.USER_REACTIONS)
-    private val commentReactionsRef get() = db.getReference(FirebasePaths.COMMENT_REACTIONS)
-    private val userCommentReactionsRef get() = db.getReference(FirebasePaths.USER_COMMENT_REACTIONS)
 
     /**
      * الحد الأقصى الآمن لحجم أي حقل نصي واحد داخل عقدة Realtime Database (عدد الأحرف تقريبًا).
@@ -74,47 +72,6 @@ class PostRepository(
         postsRef.child(original.postId).child("teksCount")
             .setValue(ServerValue.increment(1)).await()
         return postId
-    }
-
-    /**
-     * يعدّل محتوى فقرة موجودة (نص فقط حاليًا) — يتحقق أن [authorId] هو فعلاً صاحب الفقرة
-     * قبل التعديل، ويسجّل وقت آخر تعديل في editedAt لعرض شارة "تم التعديل".
-     */
-    suspend fun updatePostContent(postId: String, authorId: String, newContent: String) {
-        val ref = postsRef.child(postId)
-        val current = ref.get().await().getValue(Post::class.java)
-            ?: throw IllegalStateException("الفقرة غير موجودة")
-        require(current.authorId == authorId) { "لا يمكنك تعديل فقرة لا تملكها" }
-        ref.updateChildren(
-            mapOf(
-                "content" to newContent,
-                "editedAt" to System.currentTimeMillis()
-            )
-        ).await()
-    }
-
-    /**
-     * يحذف فقرة نهائيًا بعد التحقق من الملكية، مع تنظيف بياناتها المرتبطة
-     * (التعليقات وتفاعلاتها، تفاعلات ⭐/💔) وتحديث عداد فقرات صاحبها.
-     */
-    suspend fun deletePost(postId: String, authorId: String) {
-        val ref = postsRef.child(postId)
-        val current = ref.get().await().getValue(Post::class.java)
-            ?: throw IllegalStateException("الفقرة غير موجودة")
-        require(current.authorId == authorId) { "لا يمكنك حذف فقرة لا تملكها" }
-
-        if (current.isPinned) {
-            runCatching { usersRef.child(authorId).child("pinnedPostId").setValue("").await() }
-        }
-
-        ref.removeValue().await()
-        runCatching { commentsRef.child(postId).removeValue().await() }
-        runCatching { commentReactionsRef.child(postId).removeValue().await() }
-        runCatching { reactionsRef.child(postId).removeValue().await() }
-        runCatching {
-            usersRef.child(authorId).child("paragraphsCount")
-                .setValue(ServerValue.increment(-1)).await()
-        }
     }
 
     /**
@@ -324,48 +281,6 @@ class PostRepository(
             override fun onDataChange(snapshot: DataSnapshot) {
                 val list = snapshot.children.mapNotNull { it.getValue(Comment::class.java) }
                 trySend(list)
-            }
-            override fun onCancelled(error: DatabaseError) { close(error.toException()) }
-        }
-        ref.addValueEventListener(listener)
-        awaitClose { ref.removeEventListener(listener) }
-    }
-
-    /** يحذف تعليقًا واحدًا (صاحب التعليق أو صاحب الفقرة فقط عبر التحقق في واجهة الاستدعاء). */
-    suspend fun deleteComment(postId: String, commentId: String) {
-        commentsRef.child(postId).child(commentId).removeValue().await()
-        commentReactionsRef.child(postId).child(commentId).removeValue().await()
-        adjustCount(postId, "commentsCount", -1)
-        recomputeShaabiya(postId)
-    }
-
-    /**
-     * إعجاب/إلغاء إعجاب بتعليق (⭐ بسيطة بدون عدم إعجاب) — تبديل (toggle).
-     * تُعيد الحالة الجديدة (true = أصبح معجَبًا به).
-     */
-    suspend fun toggleCommentLike(postId: String, commentId: String, uid: String): Boolean {
-        val ref = commentReactionsRef.child(postId).child(commentId).child(uid)
-        val alreadyLiked = ref.get().await().exists()
-        val commentCountRef = commentsRef.child(postId).child(commentId).child("likesCount")
-        return if (alreadyLiked) {
-            ref.removeValue().await()
-            userCommentReactionsRef.child(uid).child(postId).child(commentId).removeValue().await()
-            commentCountRef.setValue(ServerValue.increment(-1)).await()
-            false
-        } else {
-            ref.setValue(true).await()
-            userCommentReactionsRef.child(uid).child(postId).child(commentId).setValue(true).await()
-            commentCountRef.setValue(ServerValue.increment(1)).await()
-            true
-        }
-    }
-
-    /** يستمع فوريًا لمجموعة معرّفات التعليقات التي أعجبت المستخدم الحالي ضمن فقرة واحدة. */
-    fun observeMyCommentLikes(postId: String, uid: String): Flow<Set<String>> = callbackFlow {
-        val ref = userCommentReactionsRef.child(uid).child(postId)
-        val listener = object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                trySend(snapshot.children.mapNotNull { it.key }.toSet())
             }
             override fun onCancelled(error: DatabaseError) { close(error.toException()) }
         }
