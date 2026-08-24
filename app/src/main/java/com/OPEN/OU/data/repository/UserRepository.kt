@@ -1,5 +1,7 @@
 package com.OPEN.OU.data.repository
 
+import com.OPEN.OU.data.algorithm.FollowSuggestionAlgorithm
+import com.OPEN.OU.data.algorithm.UserFameAlgorithm
 import com.OPEN.OU.data.model.User
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
@@ -17,6 +19,10 @@ class UserRepository(
     private val usersRef get() = db.getReference(FirebasePaths.USERS)
     private val tekingRef get() = db.getReference(FirebasePaths.TEKING)
     private val tekersRef get() = db.getReference(FirebasePaths.TEKERS)
+
+    /** حد أدنى تقريبي لـ[UserFameAlgorithm.computeRisingScore] لاعتبار مستخدم "نجمًا صاعدًا"
+     *  ضمن اقتراحات المتابعة — راجع [getFollowSuggestions]. */
+    private val RISING_STAR_THRESHOLD = 5_000L
 
     /** يستمع مباشرة (Realtime) لتحديثات غرفة المستخدم */
     fun observeUser(uid: String): Flow<User?> = callbackFlow {
@@ -63,6 +69,9 @@ class UserRepository(
             .setValue(com.google.firebase.database.ServerValue.increment(1)).await()
         usersRef.child(tekerId).child("tekersCount")
             .setValue(com.google.firebase.database.ServerValue.increment(1)).await()
+
+        // متابع جديد = مُدخل مباشر في شهرة صاحب الغرفة، فنعيد حسابها فورًا.
+        recomputeFame(tekerId)
     }
 
     /** إلغاء التيك (إلغاء المتابعة) */
@@ -74,6 +83,97 @@ class UserRepository(
             .setValue(com.google.firebase.database.ServerValue.increment(-1)).await()
         usersRef.child(tekerId).child("tekersCount")
             .setValue(com.google.firebase.database.ServerValue.increment(-1)).await()
+
+        recomputeFame(tekerId)
+    }
+
+    /** يعيد حساب User.shaabiyaScore (شهرة "مدى الحياة") عبر [UserFameAlgorithm]. */
+    private suspend fun recomputeFame(uid: String) {
+        val user = usersRef.child(uid).get().await().getValue(User::class.java) ?: return
+        val score = UserFameAlgorithm.computeScore(user)
+        usersRef.child(uid).child("shaabiyaScore").setValue(score).await()
+    }
+
+    /**
+     * أعلى [limit] مستخدم شهرةً (مدى الحياة) — لقائمة "الأكثر شهرة" / Top Opouers.
+     * جلب لمرة واحدة (وليس Realtime) لأنها قائمة استعراضية لا تحتاج تحديثًا لحظيًا.
+     */
+    suspend fun getTopFamedUsers(limit: Int = 20): List<User> =
+        usersRef.orderByChild("shaabiyaScore").limitToLast(limit).get().await()
+            .children.mapNotNull { runCatching { it.getValue(User::class.java) }.getOrNull() }
+            .filter { it.accountStatus == "ACTIVE" }
+            .sortedByDescending { it.shaabiyaScore }
+
+    /**
+     * "النجوم الصاعدة": أعلى مستخدمين سرعةَ نمو (تفاعل/يوم منذ الانضمام) — راجع
+     * [UserFameAlgorithm.computeRisingScore]. لا يوجد فهرس Firebase لهذا الحقل
+     * المحسوب ديناميكيًا حسب الوقت الحالي، لذا نجلب أحدث [candidatePoolSize]
+     * مستخدم مسجَّل ونرتّبهم على الجهاز.
+     */
+    suspend fun getRisingStars(limit: Int = 20, candidatePoolSize: Int = 200): List<User> {
+        val candidates = usersRef.orderByChild("createdAt").limitToLast(candidatePoolSize).get().await()
+            .children.mapNotNull { runCatching { it.getValue(User::class.java) }.getOrNull() }
+            .filter { it.accountStatus == "ACTIVE" }
+        val now = System.currentTimeMillis()
+        return candidates
+            .sortedByDescending { UserFameAlgorithm.computeRisingScore(it, now) }
+            .take(limit)
+    }
+
+    /**
+     * "قد تعرفهم" — اقتراحات متابعة عبر [FollowSuggestionAlgorithm]: صداقة-الصديق
+     * (من يتابعهم من تتابعهم) + اهتمام مشترك اختياري + شهرة مخمَّدة، مع حجز مقاعد
+     * لصالح النجوم الصاعدة ذات الصلة الحقيقية.
+     *
+     * [interestedAuthorIds] اختياري ويُحسَب خارجيًا (مثلًا من فقرات أعجب بها
+     * المستخدم سابقًا — بنفس منطق SuggestionsWorker) لتفادي ربط هذا المستودع
+     * بمستودع الفقرات مباشرة.
+     *
+     * [followeePoolSize] يحدّ عدد من يتابعهم المستخدم الذين نفحص شبكتهم (لتفادي
+     * قراءات غير محدودة لحساب يتابع آلاف الحسابات)، و[perFolloweeCandidates]
+     * يحدّ عدد مرشحين نجلبهم من شبكة كل واحد منهم.
+     */
+    suspend fun getFollowSuggestions(
+        uid: String,
+        interestedAuthorIds: Set<String> = emptySet(),
+        limit: Int = 15,
+        followeePoolSize: Int = 50,
+        perFolloweeCandidates: Int = 50
+    ): List<User> {
+        val myFollowingIds = getTekingIds(uid).toSet()
+        val excluded = myFollowingIds + uid
+
+        // نحسب "وزن الصلة" (عدد المتابَعين المشتركين) لكل مرشَّح عبر عيّنة من
+        // شبكة أول [followeePoolSize] ممن يتابعهم المستخدم.
+        val mutualWeight = mutableMapOf<String, Int>()
+        for (followeeId in myFollowingIds.take(followeePoolSize)) {
+            val theirFollowing = tekingRef.child(followeeId).limitToFirst(perFolloweeCandidates)
+                .get().await().children.mapNotNull { it.key }
+            for (candidateId in theirFollowing) {
+                if (candidateId in excluded) continue
+                mutualWeight[candidateId] = (mutualWeight[candidateId] ?: 0) + 1
+            }
+        }
+
+        if (mutualWeight.isEmpty() && interestedAuthorIds.isEmpty()) return emptyList()
+
+        val candidateIds = (mutualWeight.keys + (interestedAuthorIds - excluded)).distinct()
+        val users = getUsersByIds(candidateIds).filter { it.accountStatus == "ACTIVE" }
+        val now = System.currentTimeMillis()
+
+        val candidates = users.map { user ->
+            FollowSuggestionAlgorithm.Candidate(
+                uid = user.uid,
+                mutualConnections = mutualWeight[user.uid] ?: 0,
+                sharedInterest = user.uid in interestedAuthorIds,
+                fameScore = user.shaabiyaScore,
+                isRising = UserFameAlgorithm.computeRisingScore(user, now) >
+                    RISING_STAR_THRESHOLD
+            )
+        }
+
+        return FollowSuggestionAlgorithm.pickSuggestions(candidates, limit)
+            .mapNotNull { c -> users.find { it.uid == c.uid } }
     }
 
     suspend fun isTeking(tekingId: String, tekerId: String): Boolean =
