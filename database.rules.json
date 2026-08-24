@@ -149,6 +149,24 @@
       }
     },
 
+    "commentReactions": {
+      "$postId": {
+        "$commentId": {
+          ".read": true,
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid"
+          }
+        }
+      }
+    },
+
+    "userCommentReactions": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
     "teking": {
       "$uid": {
         ".read": true,
