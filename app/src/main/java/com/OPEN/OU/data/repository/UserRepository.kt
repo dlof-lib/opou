@@ -22,7 +22,11 @@ class UserRepository(
         val ref = usersRef.child(uid)
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                trySend(snapshot.getValue(User::class.java))
+                // getValue() قد يرمي DatabaseException إن كانت البيانات لا تطابق شكل User
+                // (حقل بنوع غير متوقع مثلاً). بدون هذا الحماية كان أي خطأ هنا يُسقط
+                // التطبيق بالكامل فور فتح شاشة الحساب/الغرفة.
+                val user = runCatching { snapshot.getValue(User::class.java) }.getOrNull()
+                trySend(user)
             }
             override fun onCancelled(error: DatabaseError) { close(error.toException()) }
         }
