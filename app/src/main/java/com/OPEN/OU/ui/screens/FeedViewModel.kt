@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.OPEN.OU.data.model.Post
 import com.OPEN.OU.data.model.ReactionType
 import com.OPEN.OU.data.repository.AuthRepository
+import com.OPEN.OU.data.repository.BlockRepository
 import com.OPEN.OU.data.repository.PostRepository
 import com.OPEN.OU.data.repository.UserRepository
 import com.OPEN.OU.network.PhpBridgeRepository
@@ -20,6 +21,7 @@ class FeedViewModel(
     private val postRepo: PostRepository = PostRepository(),
     private val authRepo: AuthRepository = AuthRepository(),
     private val userRepo: UserRepository = UserRepository(),
+    private val blockRepo: BlockRepository = BlockRepository(),
     private val phpBridge: PhpBridgeRepository = PhpBridgeRepository()
 ) : ViewModel() {
 
@@ -39,22 +41,45 @@ class FeedViewModel(
 
     fun clearError() { _errorMessage.value = null }
 
+    val currentUid: String? get() = authRepo.currentUserId
+
     init {
         val uid = authRepo.currentUserId
         viewModelScope.launch {
-            // نجلب "من يتابعهم" المستخدم الحالي مرة واحدة لتطبيق خصوصية "محدود" (LIMITED) على فقرات التغذية
+            // نجلب "من يتابعهم" المستخدم الحالي ومن حظرهم/حظروه مرة واحدة لتطبيق الخصوصية والحظر على التغذية
             val followingIds = uid?.let { runCatching { userRepo.getTekingIds(it).toSet() }.getOrDefault(emptySet()) } ?: emptySet()
+            val mutedIds = uid?.let { runCatching { blockRepo.getMutedIds(it) }.getOrDefault(emptySet()) } ?: emptySet()
             launch {
-                postRepo.observeFeed(viewerId = uid, viewerFollowingIds = followingIds).collect { _feed.value = it }
+                postRepo.observeFeed(viewerId = uid, viewerFollowingIds = followingIds, mutedIds = mutedIds).collect { _feed.value = it }
             }
             launch {
-                postRepo.observeShaabiyat(viewerId = uid, viewerFollowingIds = followingIds).collect { _shaabiyat.value = it }
+                postRepo.observeShaabiyat(viewerId = uid, viewerFollowingIds = followingIds, mutedIds = mutedIds).collect { _shaabiyat.value = it }
             }
         }
         uid?.let {
             viewModelScope.launch {
                 postRepo.observeMyReactions(it).collect { reactions -> _myReactions.value = reactions }
             }
+        }
+    }
+
+    fun togglePin(post: Post) {
+        val uid = authRepo.currentUserId ?: return
+        if (uid != post.authorId) return
+        viewModelScope.launch {
+            runCatching {
+                val me = userRepo.getUser(uid)
+                postRepo.setPinned(uid, post.postId, !post.isPinned, me?.pinnedPostId)
+            }.onFailure { _errorMessage.value = it.message ?: "تعذّر تثبيت الفقرة" }
+        }
+    }
+
+    fun blockAuthor(authorId: String) {
+        val uid = authRepo.currentUserId ?: return
+        if (uid == authorId) return
+        viewModelScope.launch {
+            runCatching { blockRepo.block(uid, authorId) }
+                .onFailure { _errorMessage.value = it.message ?: "تعذّر حظر المستخدم" }
         }
     }
 
