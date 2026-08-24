@@ -92,19 +92,21 @@ class PostRepository(
 
     /** يتحقق من ظهور فقرة لمستخدم زائر بعينه وفق قواعد الخصوصية — يُستخدم خارج هذا الملف أيضًا (مثال: عامل التوصيات). */
     fun isVisibleToViewer(post: Post, viewerId: String?, viewerFollowingIds: Set<String> = emptySet()): Boolean =
-        isVisibleTo(post, viewerId, viewerFollowingIds)
+        isVisibleTo(post, viewerId, viewerFollowingIds, emptySet())
 
-    /** الاستماع الفوري (Realtime) لتدفق الفقرات الأحدث أولًا، مع تطبيق خصوصية الفقرة وحالة الجدولة */
+    /** الاستماع الفوري (Realtime) لتدفق الفقرات الأحدث أولًا، مع تطبيق خصوصية الفقرة وحالة الجدولة
+     * و[mutedIds] (من حظرهم المستخدم أو من حظروه — يُستبعدون بالكامل من التغذية). */
     fun observeFeed(
         limit: Int = 50,
         viewerId: String? = null,
-        viewerFollowingIds: Set<String> = emptySet()
+        viewerFollowingIds: Set<String> = emptySet(),
+        mutedIds: Set<String> = emptySet()
     ): Flow<List<Post>> = callbackFlow {
         val query: Query = postsRef.orderByChild("createdAt").limitToLast(limit)
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val list = snapshot.children.mapNotNull { it.getValue(Post::class.java) }
-                    .filter { isVisibleTo(it, viewerId, viewerFollowingIds) }
+                    .filter { isVisibleTo(it, viewerId, viewerFollowingIds, mutedIds) }
                     .sortedByDescending { it.createdAt }
                 trySend(list)
             }
@@ -114,17 +116,18 @@ class PostRepository(
         awaitClose { query.removeEventListener(listener) }
     }
 
-    /** تبويب "الشعبيات": الأعلى نقاط شعبية، مع نفس قواعد الخصوصية/الجدولة */
+    /** تبويب "الشعبيات": الأعلى نقاط شعبية، مع نفس قواعد الخصوصية/الجدولة/الحظر */
     fun observeShaabiyat(
         limit: Int = 30,
         viewerId: String? = null,
-        viewerFollowingIds: Set<String> = emptySet()
+        viewerFollowingIds: Set<String> = emptySet(),
+        mutedIds: Set<String> = emptySet()
     ): Flow<List<Post>> = callbackFlow {
         val query: Query = postsRef.orderByChild("shaabiyaScore").limitToLast(limit)
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val list = snapshot.children.mapNotNull { it.getValue(Post::class.java) }
-                    .filter { isVisibleTo(it, viewerId, viewerFollowingIds) }
+                    .filter { isVisibleTo(it, viewerId, viewerFollowingIds, mutedIds) }
                     .sortedByDescending { it.shaabiyaScore }
                 trySend(list)
             }
@@ -135,12 +138,46 @@ class PostRepository(
     }
 
     /**
-     * يطبّق قواعد خصوصية الفقرة (PUBLIC/PRIVATE/LIMITED/CUSTOM) وحالة الجدولة (scheduledAt)
-     * لتحديد ما إذا كانت فقرة معينة يجب أن تظهر لمستخدم زائر بعينه في التغذية.
+     * فقرات غرفة مستخدم واحد فقط (للعرض في ProfileScreen)، مع الفقرة المثبّتة أولًا
+     * ثم البقية الأحدث فأحدث، وتطبيق نفس قواعد الخصوصية/الحظر.
+     */
+    fun observeUserPosts(
+        authorUid: String,
+        viewerId: String?,
+        viewerFollowingIds: Set<String> = emptySet(),
+        mutedIds: Set<String> = emptySet()
+    ): Flow<List<Post>> = callbackFlow {
+        val query: Query = postsRef.orderByChild("authorId").equalTo(authorUid)
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val list = snapshot.children.mapNotNull { it.getValue(Post::class.java) }
+                    .filter { isVisibleTo(it, viewerId, viewerFollowingIds, mutedIds) }
+                    .sortedWith(compareByDescending<Post> { it.isPinned }.thenByDescending { it.createdAt })
+                trySend(list)
+            }
+            override fun onCancelled(error: DatabaseError) { close(error.toException()) }
+        }
+        query.addValueEventListener(listener)
+        awaitClose { query.removeEventListener(listener) }
+    }
+
+    /** يثبّت/يلغي تثبيت فقرة في غرفتها. يلغي أي تثبيت سابق لنفس المستخدم تلقائيًا (تثبيت واحد كحد أقصى). */
+    suspend fun setPinned(authorUid: String, postId: String, pinned: Boolean, previousPinnedPostId: String?) {
+        if (pinned && !previousPinnedPostId.isNullOrBlank() && previousPinnedPostId != postId) {
+            postsRef.child(previousPinnedPostId).child("isPinned").setValue(false).await()
+        }
+        postsRef.child(postId).child("isPinned").setValue(pinned).await()
+        usersRef.child(authorUid).child("pinnedPostId").setValue(if (pinned) postId else "").await()
+    }
+
+    /**
+     * يطبّق قواعد خصوصية الفقرة (PUBLIC/PRIVATE/LIMITED/CUSTOM)، حالة الجدولة (scheduledAt)،
+     * والحظر المتبادل [mutedIds] لتحديد ما إذا كانت فقرة معينة يجب أن تظهر لمستخدم زائر بعينه.
      * الفقرات المجدولة لموعد مستقبلي لا تظهر إلا لصاحبها (كمعاينة).
      */
-    private fun isVisibleTo(post: Post, viewerId: String?, viewerFollowingIds: Set<String>): Boolean {
+    private fun isVisibleTo(post: Post, viewerId: String?, viewerFollowingIds: Set<String>, mutedIds: Set<String>): Boolean {
         val isOwner = viewerId != null && viewerId == post.authorId
+        if (!isOwner && post.authorId in mutedIds) return false
         if (post.isScheduledForFuture() && !isOwner) return false
         if (isOwner) return true
 
