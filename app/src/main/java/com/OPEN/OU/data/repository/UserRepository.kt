@@ -121,18 +121,26 @@ class UserRepository(
         usersRef.child(uid).child("accountStatus").setValue(status).await()
     }
 
-    /** يفعّل التحقق بخطوتين ويخزّن بصمة PIN فقط (وليس الرمز نفسه). */
+    /**
+     * يفعّل التحقق بخطوتين: العلم العام في /users/{uid} (غير حسّاس)، وبصمة PIN نفسها في
+     * عقدة منفصلة محمية /userSecrets/{uid} (قراءتها مقصورة على صاحبها فقط — راجع database.rules.json).
+     */
     suspend fun enableTwoFactor(uid: String, pinHash: String) {
-        usersRef.child(uid).updateChildren(
-            mapOf("twoFactorEnabled" to true, "twoFactorPinHash" to pinHash)
-        ).await()
+        usersRef.child(uid).child("twoFactorEnabled").setValue(true).await()
+        db.getReference(FirebasePaths.USER_SECRETS).child(uid).child("twoFactorPinHash")
+            .setValue(pinHash).await()
     }
 
     suspend fun disableTwoFactor(uid: String) {
-        usersRef.child(uid).updateChildren(
-            mapOf("twoFactorEnabled" to false, "twoFactorPinHash" to "")
-        ).await()
+        usersRef.child(uid).child("twoFactorEnabled").setValue(false).await()
+        db.getReference(FirebasePaths.USER_SECRETS).child(uid).child("twoFactorPinHash")
+            .removeValue().await()
     }
+
+    /** يجلب بصمة PIN الخاصة بالتحقق بخطوتين — لا يُستدعى إلا من نفس المستخدم الموثّق (تفرضه قواعد Firebase). */
+    suspend fun getTwoFactorPinHash(uid: String): String =
+        db.getReference(FirebasePaths.USER_SECRETS).child(uid).child("twoFactorPinHash")
+            .get().await().getValue(String::class.java).orEmpty()
 
     suspend fun updateCategories(uid: String, categories: List<String>) {
         usersRef.child(uid).child("categories").setValue(categories).await()
@@ -162,6 +170,7 @@ class UserRepository(
         runCatching { db.getReference(FirebasePaths.USER_REACTIONS).child(uid).removeValue().await() }
         runCatching { db.getReference(FirebasePaths.BLOCKS).child(uid).removeValue().await() }
         runCatching { db.getReference(FirebasePaths.BLOCKED_BY).child(uid).removeValue().await() }
+        runCatching { db.getReference(FirebasePaths.USER_SECRETS).child(uid).removeValue().await() }
     }
 
     // ===== ميزات الخصوصية =====
