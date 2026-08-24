@@ -113,7 +113,10 @@ fun FeedScreen(
                                 onReact = { type -> viewModel.react(post, type) },
                                 onComment = { onOpenComments(post) },
                                 onTek = { viewModel.tek(post, currentUsername, currentAvatar, currentAvatarBase64) },
-                                onOpenProfile = onOpenProfile
+                                onOpenProfile = onOpenProfile,
+                                isOwnPost = viewModel.currentUid != null && viewModel.currentUid == post.authorId,
+                                onTogglePin = { viewModel.togglePin(post) },
+                                onBlockAuthor = { viewModel.blockAuthor(post.authorId) }
                             )
                         }
                     }
