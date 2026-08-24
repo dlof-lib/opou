@@ -34,6 +34,7 @@ import com.OPEN.OU.data.repository.AuthRepository
 import com.OPEN.OU.ui.components.Base64Image
 import com.OPEN.OU.ui.components.GradientText
 import com.OPEN.OU.ui.components.ImagePickerButton
+import com.OPEN.OU.ui.components.ResponsiveContent
 import com.OPEN.OU.ui.theme.OpouBrandGradient
 import com.OPEN.OU.util.ImageCodec
 
@@ -107,14 +108,14 @@ fun ProfileScreen(
             return@Scaffold
         }
 
+        ResponsiveContent(modifier = Modifier.padding(padding)) {
         Column(
             Modifier
-                .padding(padding)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
             // ── البانر ─────────────────────────────────────────────────────
-            Box(Modifier.fillMaxWidth().height(150.dp)) {
+            Box(Modifier.fillMaxWidth().height(130.dp)) {
                 when {
                     user.bannerBase64.isNotBlank() -> Base64Image(
                         base64 = user.bannerBase64,
@@ -143,17 +144,17 @@ fun ProfileScreen(
             }
 
             // ── الصورة الرمزية + الاسم + التصنيف ─────────────────────────────
-            Column(Modifier.padding(horizontal = 20.dp)) {
-                Box(Modifier.offset(y = (-40).dp)) {
+            Column(Modifier.padding(horizontal = 16.dp)) {
+                Box(Modifier.offset(y = (-32).dp)) {
                     val avatarModifier = Modifier
-                        .size(88.dp)
+                        .size(72.dp)
                         .clip(CircleShape)
                         .border(3.dp, MaterialTheme.colorScheme.background, CircleShape)
                         .padding(3.dp)
                         .clip(CircleShape)
 
                     if (user.avatarBase64.isNotBlank()) {
-                        Base64Image(base64 = user.avatarBase64, modifier = avatarModifier, cornerRadiusDp = 24)
+                        Base64Image(base64 = user.avatarBase64, modifier = avatarModifier, cornerRadiusDp = 20)
                     } else {
                         AsyncImage(
                             model = user.avatarUrl.ifBlank { null },
@@ -296,6 +297,7 @@ fun ProfileScreen(
 
                 Spacer(Modifier.height(24.dp))
             }
+        }
         }
     }
 }
