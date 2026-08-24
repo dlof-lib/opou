@@ -30,4 +30,7 @@ object FirebasePaths {
     const val COMMENT_LIKES = "commentLikes"
     /** فهرس معكوس: /userCommentLikes/{uid}/{commentId} -> true — لعرض حالة إعجاب المستخدم الحالي فوريًا بلا طلب لكل تعليق */
     const val USER_COMMENT_LIKES = "userCommentLikes"
+    /** /userSecrets/{uid}/twoFactorPinHash -> String — عقدة منفصلة قراءتها مقصورة على صاحبها فقط
+     *  (بخلاف /users/{uid} العامة القراءة)، لأن بصمة PIN حسّاسة ويجب ألا يقدر أي زائر قراءتها. */
+    const val USER_SECRETS = "userSecrets"
 }
