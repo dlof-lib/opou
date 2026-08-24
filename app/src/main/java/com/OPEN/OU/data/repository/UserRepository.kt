@@ -69,6 +69,11 @@ class UserRepository(
     suspend fun isTeking(tekingId: String, tekerId: String): Boolean =
         tekingRef.child(tekingId).child(tekerId).get().await().exists()
 
+    /** يبحث عن uid صاحب اسم مستخدم معيّن عبر فهرس /usernames — يُستخدم لدعم المنشنز (@اسم). */
+    suspend fun getUidByUsername(username: String): String? =
+        db.getReference(FirebasePaths.USERNAMES).child(username).get().await()
+            .getValue(String::class.java)
+
     /** جلب لمرة واحدة (وليس استماعًا فوريًا) لبيانات مستخدم — يُستخدم قبل إرسال إشعار PHP مثلًا. */
     suspend fun getUser(uid: String): User? =
         usersRef.child(uid).get().await().getValue(User::class.java)
