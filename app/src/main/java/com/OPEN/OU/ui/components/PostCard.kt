@@ -76,6 +76,7 @@ fun PostCard(
     onDeletePost: (() -> Unit)? = null
 ) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showImageViewer by remember { mutableStateOf(false) }
     val customBackground = post.backgroundColor.toColorOrNull()
 
     Card(
@@ -287,6 +288,7 @@ fun PostCard(
                                 .fillMaxWidth()
                                 .height(200.dp)
                                 .clip(RoundedCornerShape(12.dp))
+                                .clickable { showImageViewer = true }
                         )
                     }
                 }
@@ -311,6 +313,13 @@ fun PostCard(
                 thickness = 0.6.dp
             )
         }
+    }
+
+    if (showImageViewer && post.imageBase64.isNotBlank()) {
+        ImageViewerDialog(
+            base64 = post.imageBase64,
+            onDismiss = { showImageViewer = false }
+        )
     }
 
     if (showDeleteConfirm) {
