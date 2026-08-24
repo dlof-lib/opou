@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
@@ -16,6 +17,7 @@ import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -68,8 +70,11 @@ fun PostCard(
     modifier: Modifier = Modifier,
     isOwnPost: Boolean = false,
     onTogglePin: ((Boolean) -> Unit)? = null,
-    onBlockAuthor: (() -> Unit)? = null
+    onBlockAuthor: (() -> Unit)? = null,
+    onEditPost: (() -> Unit)? = null,
+    onDeletePost: (() -> Unit)? = null
 ) {
+    var showDeletePostConfirm by remember { mutableStateOf(false) }
     val customBackground = post.backgroundColor.toColorOrNull()
 
     Card(
@@ -140,7 +145,7 @@ fun PostCard(
                         MetaLine(post)
                     }
 
-                    if (onTogglePin != null || onBlockAuthor != null) {
+                    if (onTogglePin != null || onBlockAuthor != null || onEditPost != null || onDeletePost != null) {
                         var menuExpanded by remember { mutableStateOf(false) }
                         Box {
                             IconButton(onClick = { menuExpanded = true }) {
@@ -152,6 +157,20 @@ fun PostCard(
                                         text = { Text(if (post.isPinned) "إلغاء التثبيت" else "تثبيت الفقرة") },
                                         leadingIcon = { Icon(Icons.Filled.PushPin, contentDescription = null) },
                                         onClick = { menuExpanded = false; onTogglePin(!post.isPinned) }
+                                    )
+                                }
+                                if (isOwnPost && onEditPost != null) {
+                                    DropdownMenuItem(
+                                        text = { Text("تعديل الفقرة") },
+                                        leadingIcon = { Icon(Icons.Filled.Tune, contentDescription = null) },
+                                        onClick = { menuExpanded = false; onEditPost() }
+                                    )
+                                }
+                                if (isOwnPost && onDeletePost != null) {
+                                    DropdownMenuItem(
+                                        text = { Text("حذف الفقرة") },
+                                        leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null) },
+                                        onClick = { menuExpanded = false; showDeletePostConfirm = true }
                                     )
                                 }
                                 if (!isOwnPost && onBlockAuthor != null) {
@@ -249,6 +268,25 @@ fun PostCard(
                 thickness = 0.6.dp
             )
         }
+    }
+
+    if (showDeletePostConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeletePostConfirm = false },
+            title = { Text("حذف الفقرة؟") },
+            text = { Text("لا يمكن التراجع عن هذا الإجراء.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeletePostConfirm = false
+                    onDeletePost?.invoke()
+                }) {
+                    Text("حذف", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeletePostConfirm = false }) { Text("إلغاء") }
+            }
+        )
     }
 }
 
