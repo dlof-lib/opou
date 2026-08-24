@@ -45,8 +45,10 @@ private object Routes {
     const val ACCOUNT_SETTINGS = "account_settings"
     const val PRIVACY_SETTINGS = "privacy_settings"
     const val BLOCKED_USERS = "blocked_users"
+    const val THREAD = "thread/{threadId}"
     fun profile(uid: String) = "profile/$uid"
     fun editProfile(uid: String) = "edit_profile/$uid"
+    fun thread(threadId: String) = "thread/$threadId"
 }
 
 /** تبويبات شريط التنقّل السفلي: الرئيسية / التيكرز / الحساب */
@@ -83,6 +85,8 @@ fun OpouNavGraph(
     var activeCommentsPost by remember { mutableStateOf<Post?>(null) }
     /** الفقرة قيد التعديل حاليًا (إن وُجدت) — تُمرَّر لشاشة CreatePostScreen في وضع "تعديل". */
     var editingPost by remember { mutableStateOf<Post?>(null) }
+    /** الفقرة التي يتابع المستخدم سلسلته انطلاقًا منها (إن وُجدت). */
+    var continuingFromPost by remember { mutableStateOf<Post?>(null) }
     // تبويب الشاشة الرئيسية مرفوع هنا (بدل داخل composable(MAIN)) بحيث يمكن لاختصارات
     // التطبيق ("تيكرز"/"حساب") تغييره من الخارج دون الحاجة لإعادة إنشاء الشاشة الرئيسية.
     var mainTab by rememberSaveable { mutableStateOf(MainTab.HOME) }
@@ -154,21 +158,10 @@ fun OpouNavGraph(
                                 onOpenProfile = { uid -> navController.navigate(Routes.profile(uid)) },
                                 onOpenComments = { post -> activeCommentsPost = post },
                                 onCreatePost = { navController.navigate(Routes.CREATE_POST) },
-                                onEditPost = { post -> editingPost = post; navController.navigate(Routes.CREATE_POST) }
+                                onEditPost = { post -> editingPost = post; navController.navigate(Routes.CREATE_POST) },
+                                onOpenThread = { threadId -> navController.navigate(Routes.thread(threadId)) },
+                                onContinueThread = { post -> continuingFromPost = post; navController.navigate(Routes.CREATE_POST) }
                             )
-
-                            activeCommentsPost?.let { post ->
-                                val commentsVm: CommentsViewModel = viewModel()
-                                CommentsSheet(
-                                    postId = post.postId,
-                                    currentUsername = currentUsername,
-                                    currentAvatar = currentAvatar,
-                                    currentAvatarBase64 = currentAvatarBase64,
-                                    viewModel = commentsVm,
-                                    postAuthorId = post.authorId,
-                                    onDismiss = { activeCommentsPost = null }
-                                )
-                            }
                         }
 
                         MainTab.TEKERS -> {
@@ -204,9 +197,30 @@ fun OpouNavGraph(
                 currentUsername = currentUsername,
                 currentAvatar = currentAvatar,
                 currentAvatarBase64 = currentAvatarBase64,
-                onDone = { editingPost = null; navController.popBackStack() },
-                onBack = { editingPost = null; navController.popBackStack() },
-                editingPost = editingPost
+                onDone = { editingPost = null; continuingFromPost = null; navController.popBackStack() },
+                onBack = { editingPost = null; continuingFromPost = null; navController.popBackStack() },
+                editingPost = editingPost,
+                continuingFromPost = continuingFromPost
+            )
+        }
+
+        composable(
+            route = Routes.THREAD,
+            arguments = listOf(navArgument("threadId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val threadId = backStackEntry.arguments?.getString("threadId").orEmpty()
+            val vm: ThreadViewModel = viewModel()
+            ThreadScreen(
+                threadId = threadId,
+                viewModel = vm,
+                currentUsername = currentUsername,
+                currentAvatar = currentAvatar,
+                currentAvatarBase64 = currentAvatarBase64,
+                onBack = { navController.popBackStack() },
+                onOpenProfile = { uid -> navController.navigate(Routes.profile(uid)) },
+                onOpenComments = { post -> activeCommentsPost = post },
+                onEditPost = { post -> editingPost = post; navController.navigate(Routes.CREATE_POST) },
+                onContinueThread = { post -> continuingFromPost = post; navController.navigate(Routes.CREATE_POST) }
             )
         }
 
@@ -274,6 +288,21 @@ fun OpouNavGraph(
                 onBack = { navController.popBackStack() }
             )
         }
+    }
+
+    // تُعرض فوق NavHost (وليس داخل تبويب واحد) بحيث يمكن فتح تعليقات فقرة من أي شاشة
+    // (التغذية، سلسلة فقرات، غرفة مستخدم...) لا من الشاشة الرئيسية فقط.
+    activeCommentsPost?.let { post ->
+        val commentsVm: CommentsViewModel = viewModel()
+        CommentsSheet(
+            postId = post.postId,
+            currentUsername = currentUsername,
+            currentAvatar = currentAvatar,
+            currentAvatarBase64 = currentAvatarBase64,
+            viewModel = commentsVm,
+            postAuthorId = post.authorId,
+            onDismiss = { activeCommentsPost = null }
+        )
     }
 }
 
