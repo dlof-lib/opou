@@ -1,7 +1,6 @@
 package com.OPEN.OU.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -24,7 +23,7 @@ import com.OPEN.OU.R
 import com.OPEN.OU.data.model.User
 import com.OPEN.OU.ui.components.Base64Image
 import com.OPEN.OU.ui.components.GradientText
-import com.OPEN.OU.ui.theme.OpouBrandGradient
+import com.OPEN.OU.ui.components.ResponsiveContent
 
 /**
  * شاشة "التيكرز" — تعرض في تبويبين: من يتابعك (متابعوك) ومن تتابعهم (تتابعهم).
@@ -62,71 +61,76 @@ fun TekersScreen(
             return@Scaffold
         }
 
-        Column(Modifier.padding(padding).fillMaxSize()) {
-            TabRow(selectedTabIndex = tab) {
-                Tab(
-                    selected = tab == 0,
-                    onClick = { tab = 0 },
-                    text = {
-                        Text(
-                            "${stringResource(R.string.tekers_tab_tekers)} (${tekers.size})",
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                )
-                Tab(
-                    selected = tab == 1,
-                    onClick = { tab = 1 },
-                    text = {
-                        Text(
-                            "${stringResource(R.string.tekers_tab_teking)} (${teking.size})",
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                )
-            }
-
-            val list = if (tab == 0) tekers else teking
-
-            when {
-                isLoading && list.isEmpty() -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                }
-                list.isEmpty() -> {
-                    Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Box(
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    Icons.Filled.People,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(28.dp)
-                                )
-                            }
-                            Spacer(Modifier.height(12.dp))
+        ResponsiveContent(modifier = Modifier.padding(padding)) {
+            Column(Modifier.fillMaxSize()) {
+                TabRow(selectedTabIndex = tab) {
+                    Tab(
+                        selected = tab == 0,
+                        onClick = { tab = 0 },
+                        text = {
                             Text(
-                                stringResource(R.string.tekers_empty),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                "${stringResource(R.string.tekers_tab_tekers)} (${tekers.size})",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.labelLarge
                             )
                         }
-                    }
+                    )
+                    Tab(
+                        selected = tab == 1,
+                        onClick = { tab = 1 },
+                        text = {
+                            Text(
+                                "${stringResource(R.string.tekers_tab_teking)} (${teking.size})",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                        }
+                    )
                 }
-                else -> {
-                    LazyColumn(
-                        contentPadding = PaddingValues(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        items(list, key = { it.uid }) { user ->
-                            TekerRow(user = user, onClick = { onOpenProfile(user.uid) })
+
+                val list = if (tab == 0) tekers else teking
+
+                when {
+                    isLoading && list.isEmpty() -> {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    list.isEmpty() -> {
+                        Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(52.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Filled.People,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                                Spacer(Modifier.height(10.dp))
+                                Text(
+                                    stringResource(R.string.tekers_empty),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                    else -> {
+                        LazyColumn(Modifier.fillMaxSize()) {
+                            items(list, key = { it.uid }) { user ->
+                                TekerRow(user = user, onClick = { onOpenProfile(user.uid) })
+                                androidx.compose.material3.HorizontalDivider(
+                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                    thickness = 0.6.dp
+                                )
+                            }
                         }
                     }
                 }
@@ -140,25 +144,19 @@ private fun TekerRow(user: User, onClick: () -> Unit) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.large)
             .clickable(onClick = onClick),
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+        color = MaterialTheme.colorScheme.background
     ) {
         Row(
-            modifier = Modifier.padding(12.dp).fillMaxWidth(),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             val avatarModifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .border(2.dp, OpouBrandGradient, CircleShape)
-                .padding(2.dp)
+                .size(40.dp)
                 .clip(CircleShape)
 
             if (user.avatarBase64.isNotBlank()) {
-                Base64Image(base64 = user.avatarBase64, modifier = avatarModifier, cornerRadiusDp = 24)
+                Base64Image(base64 = user.avatarBase64, modifier = avatarModifier, cornerRadiusDp = 20)
             } else {
                 AsyncImage(
                     model = user.avatarUrl.ifBlank { null },
@@ -167,7 +165,7 @@ private fun TekerRow(user: User, onClick: () -> Unit) {
                 )
             }
 
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(10.dp))
 
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
