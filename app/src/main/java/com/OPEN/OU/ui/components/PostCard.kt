@@ -1,7 +1,6 @@
 package com.OPEN.OU.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -39,7 +38,6 @@ import com.OPEN.OU.data.model.ParagraphPrivacy
 import com.OPEN.OU.data.model.Post
 import com.OPEN.OU.data.model.ReactionType
 import com.OPEN.OU.ui.theme.OpouAccentGreen
-import com.OPEN.OU.ui.theme.OpouBrandGradient
 import com.OPEN.OU.util.SafeHtml
 import com.OPEN.OU.util.toColorOrNull
 import java.text.SimpleDateFormat
@@ -67,15 +65,11 @@ fun PostCard(
 
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(0.dp),
         colors = CardDefaults.cardColors(
             containerColor = customBackground ?: MaterialTheme.colorScheme.surface
         ),
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.outline.copy(alpha = 0.22f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column {
 
@@ -84,38 +78,34 @@ fun PostCard(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(OpouAccentGreen.copy(alpha = 0.08f))
-                        .padding(horizontal = 18.dp, vertical = 8.dp)
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Repeat,
                         contentDescription = null,
-                        tint = OpouAccentGreen,
-                        modifier = Modifier.size(13.dp)
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(12.dp)
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
                         text = "أعاد ${post.authorUsername} النشر عن ${post.originalAuthorUsername}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = OpouAccentGreen,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
             }
 
-            Column(Modifier.padding(18.dp)) {
+            Column(Modifier.padding(12.dp)) {
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     val avatarModifier = Modifier
-                        .size(46.dp)
-                        .clip(CircleShape)
-                        .border(2.dp, OpouBrandGradient, CircleShape)
-                        .padding(2.5.dp)
+                        .size(38.dp)
                         .clip(CircleShape)
                         .clickable { onOpenProfile(post.authorId) }
 
                     if (post.authorAvatarBase64.isNotBlank()) {
-                        Base64Image(base64 = post.authorAvatarBase64, modifier = avatarModifier, cornerRadiusDp = 23)
+                        Base64Image(base64 = post.authorAvatarBase64, modifier = avatarModifier, cornerRadiusDp = 19)
                     } else {
                         AsyncImage(
                             model = post.authorAvatarUrl.ifBlank { null },
@@ -123,7 +113,7 @@ fun PostCard(
                             modifier = avatarModifier.background(Color(0xFF0B7A4A))
                         )
                     }
-                    Spacer(Modifier.width(11.dp))
+                    Spacer(Modifier.width(9.dp))
                     Column(Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
@@ -143,7 +133,7 @@ fun PostCard(
                 }
 
                 if (post.content.isNotBlank()) {
-                    Spacer(Modifier.height(14.dp))
+                    Spacer(Modifier.height(10.dp))
                     ExpandableParagraphText(post)
                 }
 
@@ -162,74 +152,67 @@ fun PostCard(
                     val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         post.links.filter { it.isNotBlank() }.forEach { link ->
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = OpouAccentGreen.copy(alpha = 0.08f),
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.clickable {
                                     val normalized = if (link.startsWith("http://") || link.startsWith("https://")) link else "https://$link"
                                     runCatching { uriHandler.openUri(normalized) }
                                 }
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Filled.Link,
-                                        contentDescription = null,
-                                        tint = OpouAccentGreen,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Spacer(Modifier.width(6.dp))
-                                    Text(
-                                        text = link,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = OpouAccentGreen,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        textDecoration = TextDecoration.Underline
-                                    )
-                                }
+                                Icon(
+                                    Icons.Filled.Link,
+                                    contentDescription = null,
+                                    tint = OpouAccentGreen,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Spacer(Modifier.width(5.dp))
+                                Text(
+                                    text = link,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = OpouAccentGreen,
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textDecoration = TextDecoration.Underline
+                                )
                             }
                         }
                     }
                 }
                 if (post.imageBase64.isNotBlank()) {
-                    Spacer(Modifier.height(14.dp))
+                    Spacer(Modifier.height(10.dp))
                     Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.dp,
-                            MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
-                        )
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                     ) {
                         Base64Image(
                             base64 = post.imageBase64,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(240.dp)
-                                .clip(RoundedCornerShape(16.dp))
+                                .height(200.dp)
+                                .clip(RoundedCornerShape(12.dp))
                         )
                     }
                 }
+
+                Spacer(Modifier.height(6.dp))
+
+                ReactionBar(
+                    likesCount = post.likesCount,
+                    dislikesCount = post.dislikesCount,
+                    commentsCount = post.commentsCount,
+                    teksCount = post.teksCount,
+                    currentReaction = currentReaction,
+                    onReact = onReact,
+                    onComment = onComment,
+                    onTek = onTek,
+                    modifier = Modifier.padding(horizontal = 0.dp)
+                )
             }
 
             androidx.compose.material3.HorizontalDivider(
-                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)
-            )
-
-            ReactionBar(
-                likesCount = post.likesCount,
-                dislikesCount = post.dislikesCount,
-                commentsCount = post.commentsCount,
-                teksCount = post.teksCount,
-                currentReaction = currentReaction,
-                onReact = onReact,
-                onComment = onComment,
-                onTek = onTek,
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                thickness = 0.6.dp
             )
         }
     }
