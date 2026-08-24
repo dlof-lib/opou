@@ -8,6 +8,7 @@ import com.google.firebase.database.DatabaseError
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.tasks.await
 
 class UserRepository(
@@ -32,6 +33,11 @@ class UserRepository(
         }
         ref.addValueEventListener(listener)
         awaitClose { ref.removeEventListener(listener) }
+    }.catch {
+        // مثال: صلاحيات Firebase مرفوضة (PERMISSION_DENIED). بدون هذا كان أي خطأ هنا
+        // يُسقط التطبيق بالكامل فور فتح شاشة الحساب/الغرفة (لأن الاستثناء كان يتسرّب
+        // من الـ Flow دون أن يُمسكه أحد في الـ ViewModel).
+        emit(null)
     }
 
     suspend fun updateRoom(uid: String, updates: Map<String, Any?>) {
