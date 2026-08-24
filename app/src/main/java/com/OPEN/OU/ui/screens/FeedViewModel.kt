@@ -100,6 +100,10 @@ class FeedViewModel(
         privacy: String = "PUBLIC",
         allowedViewerIds: List<String> = emptyList(),
         scheduledAt: Long? = null,
+        replyCommentId: String = "",
+        replyCommentAuthorId: String = "",
+        replyCommentAuthorUsername: String = "",
+        replyCommentContent: String = "",
         onDone: () -> Unit
     ) {
         val uid = authRepo.currentUserId ?: return
@@ -127,7 +131,11 @@ class FeedViewModel(
                         customHtml = customHtml,
                         privacy = privacy,
                         allowedViewerIds = allowedViewerIds,
-                        scheduledAt = scheduledAt
+                        scheduledAt = scheduledAt,
+                        replyCommentId = replyCommentId,
+                        replyCommentAuthorId = replyCommentAuthorId,
+                        replyCommentAuthorUsername = replyCommentAuthorUsername,
+                        replyCommentContent = replyCommentContent
                     )
                 )
             }.onSuccess { postId ->
@@ -142,10 +150,53 @@ class FeedViewModel(
                         }.onFailure { _errorMessage.value = null } // Best-effort: لا نعرض أي خطأ للمستخدم بسببه
                     }
                 }
+                // إشعار المستخدمين المذكورين بمنشن (@اسم) — Best-effort، ولا يُرسل لصاحب الفقرة نفسه
+                viewModelScope.launch {
+                    runCatching { notifyMentionedUsersBestEffort(content, uid, authorUsername) }
+                }
             }.onFailure {
                 _errorMessage.value = it.message ?: "تعذّر نشر الفقرة، حاول مجددًا"
             }
             isPosting = false
+        }
+    }
+
+    /** يعدّل محتوى فقرة يملكها المستخدم الحالي فقط. */
+    fun editPost(postId: String, newContent: String, onDone: () -> Unit) {
+        val uid = authRepo.currentUserId ?: return
+        if (newContent.isBlank()) return
+        viewModelScope.launch {
+            runCatching { postRepo.updatePostContent(postId, uid, newContent) }
+                .onSuccess { onDone() }
+                .onFailure { _errorMessage.value = it.message ?: "تعذّر تعديل الفقرة" }
+        }
+    }
+
+    /** يحذف فقرة يملكها المستخدم الحالي فقط. */
+    fun deletePost(post: Post) {
+        val uid = authRepo.currentUserId ?: return
+        if (uid != post.authorId) return
+        viewModelScope.launch {
+            runCatching { postRepo.deletePost(post.postId, uid) }
+                .onFailure { _errorMessage.value = it.message ?: "تعذّر حذف الفقرة" }
+        }
+    }
+
+    /** يبحث عن كل @منشنز في نص الفقرة ويرسل إشعار FCM Best-effort لكل مستخدم مذكور فعليًا موجود. */
+    private suspend fun notifyMentionedUsersBestEffort(content: String, authorUid: String, authorUsername: String) {
+        val usernames = com.OPEN.OU.ui.components.MentionUtils.extractMentions(content)
+        if (usernames.isEmpty()) return
+        usernames.forEach { username ->
+            runCatching {
+                val mentionedUid = userRepo.getUidByUsername(username) ?: return@runCatching
+                if (mentionedUid == authorUid) return@runCatching
+                val mentionedUser = userRepo.getUser(mentionedUid) ?: return@runCatching
+                phpBridge.notifyBestEffort(
+                    targetFcmToken = mentionedUser.fcmToken,
+                    title = "منشن جديد على أوبو",
+                    body = "ذكرك $authorUsername في فقرة"
+                )
+            }
         }
     }
 
