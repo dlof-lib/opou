@@ -111,15 +111,27 @@ class FeedViewModel(
         replyCommentAuthorId: String = "",
         replyCommentAuthorUsername: String = "",
         replyCommentContent: String = "",
+        /** إن مُرِّرت، تُنشر الفقرة الجديدة كمتابعة لسلسلة فقرات تبدأ من (أو تمر عبر) هذه الفقرة. يجب أن يملكها المستخدم الحالي. */
+        continueFromPost: Post? = null,
         onDone: () -> Unit
     ) {
         val uid = authRepo.currentUserId ?: return
         if (content.isBlank() && imageBase64.isBlank()) return
+        if (continueFromPost != null && continueFromPost.authorId != uid) return
         // القيمة الآمنة النهائية للإيموجي — تتجاهل أي قيمة خارج المجموعة المتاحة حاليًا (الميزة قيد التطوير)
         val safeEmoji = if (com.OPEN.OU.data.model.ParagraphEmoji.isValid(emoji)) emoji else ""
         viewModelScope.launch {
             isPosting = true
             runCatching {
+                var threadId = ""
+                var threadPreviousPostId = ""
+                var threadPosition = 0
+                if (continueFromPost != null) {
+                    val (tId, prevId, nextPos) = postRepo.continueThread(continueFromPost)
+                    threadId = tId
+                    threadPreviousPostId = prevId
+                    threadPosition = nextPos
+                }
                 postRepo.createPost(
                     Post(
                         authorId = uid,
@@ -142,7 +154,10 @@ class FeedViewModel(
                         replyCommentId = replyCommentId,
                         replyCommentAuthorId = replyCommentAuthorId,
                         replyCommentAuthorUsername = replyCommentAuthorUsername,
-                        replyCommentContent = replyCommentContent
+                        replyCommentContent = replyCommentContent,
+                        threadId = threadId,
+                        threadPreviousPostId = threadPreviousPostId,
+                        threadPosition = threadPosition
                     )
                 )
             }.onSuccess { postId ->
