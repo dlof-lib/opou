@@ -22,4 +22,8 @@ object FirebasePaths {
     /** فهرس معكوس: /userReactions/{uid}/{postId} -> "LIKE"|"DISLIKE"
      *  يُستخدم لعرض تفاعل المستخدم الحالي فورًا في التغذية دون الحاجة لطلب منفصل لكل فقرة. */
     const val USER_REACTIONS = "userReactions"
+    /** /blocks/{uid}/{blockedUid} -> true  (من قام uid بحظرهم) */
+    const val BLOCKS = "blocks"
+    /** /blockedBy/{uid}/{blockerUid} -> true  (فهرس معكوس: من حظر uid) — لتصفية الظهور بسرعة بلا مسح شامل */
+    const val BLOCKED_BY = "blockedBy"
 }
