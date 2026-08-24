@@ -55,7 +55,10 @@ data class Post(
     /** قائمة معرّفات المستخدمين المسموح لهم بالمشاهدة عند privacy = CUSTOM */
     val allowedViewerIds: List<String> = emptyList(),
     /** إن كانت أكبر من الوقت الحالي، تُعتبر الفقرة "مجدولة" ولا تظهر في التغذية حتى يحين موعدها */
-    val scheduledAt: Long? = null
+    val scheduledAt: Long? = null,
+
+    /** فقرة مثبّتة أعلى غرفة صاحبها — راجع User.pinnedPostId (تحديث واحد يبقيهما متطابقين) */
+    val isPinned: Boolean = false
 ) {
     /** هل الفقرة لا تزال بانتظار موعد نشرها المجدول؟ */
     fun isScheduledForFuture(nowMillis: Long = System.currentTimeMillis()): Boolean =
