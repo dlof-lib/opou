@@ -12,6 +12,7 @@ import com.OPEN.OU.ui.components.MentionUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 
 class CommentsViewModel(
@@ -37,11 +38,16 @@ class CommentsViewModel(
 
     fun load(postId: String) {
         viewModelScope.launch {
-            postRepo.observeComments(postId).collect { _comments.value = it }
+            postRepo.observeComments(postId)
+                // يمنع أي خطأ قراءة (صلاحيات/شبكة) من إسقاط التطبيق — يعرض قائمة فارغة بدل الانهيار
+                .catch { _errorMessage.value = it.message; _comments.value = emptyList() }
+                .collect { _comments.value = it }
         }
         authRepo.currentUserId?.let { uid ->
             viewModelScope.launch {
-                postRepo.observeMyCommentLikes(postId, uid).collect { _likedCommentIds.value = it }
+                postRepo.observeMyCommentLikes(postId, uid)
+                    .catch { _likedCommentIds.value = emptySet() }
+                    .collect { _likedCommentIds.value = it }
             }
         }
     }
