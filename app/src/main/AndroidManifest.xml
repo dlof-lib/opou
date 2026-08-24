@@ -11,9 +11,13 @@
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
 
+    <!-- allowBackup معطّل: النسخ الاحتياطي التلقائي لأندرويد (adb backup / نسخ Google
+         الاحتياطي) قد يشمل ملفات SharedPreferences وقواعد بيانات محلية للمصادقة
+         (Firebase Auth session)، ما يفتح مسارًا لسرقة الجلسة إن استُعيد نسخة احتياطية
+         على جهاز آخر. -->
     <application
         android:name=".OpouApplication"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
