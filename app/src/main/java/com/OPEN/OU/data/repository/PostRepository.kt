@@ -23,6 +23,8 @@ class PostRepository(
     private val reactionsRef get() = db.getReference(FirebasePaths.REACTIONS)
     private val usersRef get() = db.getReference(FirebasePaths.USERS)
     private val userReactionsRef get() = db.getReference(FirebasePaths.USER_REACTIONS)
+    private val commentLikesRef get() = db.getReference(FirebasePaths.COMMENT_LIKES)
+    private val userCommentLikesRef get() = db.getReference(FirebasePaths.USER_COMMENT_LIKES)
 
     /**
      * الحد الأقصى الآمن لحجم أي حقل نصي واحد داخل عقدة Realtime Database (عدد الأحرف تقريبًا).
@@ -43,6 +45,25 @@ class PostRepository(
         usersRef.child(post.authorId).child("paragraphsCount")
             .setValue(ServerValue.increment(1)).await()
         return postId
+    }
+
+    /** يعدّل محتوى فقرة — يتحقق أولًا أن [uid] هو صاحبها الفعلي. */
+    suspend fun updatePostContent(postId: String, uid: String, newContent: String) {
+        val post = postsRef.child(postId).get().await().getValue(Post::class.java)
+            ?: throw IllegalStateException("الفقرة غير موجودة")
+        require(post.authorId == uid) { "لا يمكنك تعديل فقرة لا تملكها" }
+        postsRef.child(postId).child("content").setValue(newContent).await()
+    }
+
+    /** يحذف فقرة نهائيًا (مع تعليقاتها وتفاعلاتها) — يتحقق أولًا أن [uid] هو صاحبها الفعلي. */
+    suspend fun deletePost(postId: String, uid: String) {
+        val post = postsRef.child(postId).get().await().getValue(Post::class.java)
+            ?: throw IllegalStateException("الفقرة غير موجودة")
+        require(post.authorId == uid) { "لا يمكنك حذف فقرة لا تملكها" }
+        postsRef.child(postId).removeValue().await()
+        commentsRef.child(postId).removeValue().await()
+        reactionsRef.child(postId).removeValue().await()
+        usersRef.child(uid).child("paragraphsCount").setValue(ServerValue.increment(-1)).await()
     }
 
     /** إعادة نشر فقرة أصلية باسم "تيك" — تُنشئ فقرة جديدة مرتبطة بالأصل، وتزيد عداد التيك للأصل */
@@ -281,6 +302,42 @@ class PostRepository(
             override fun onDataChange(snapshot: DataSnapshot) {
                 val list = snapshot.children.mapNotNull { it.getValue(Comment::class.java) }
                 trySend(list)
+            }
+            override fun onCancelled(error: DatabaseError) { close(error.toException()) }
+        }
+        ref.addValueEventListener(listener)
+        awaitClose { ref.removeEventListener(listener) }
+    }
+
+    /** يحذف تعليقًا نهائيًا (يُستدعى من صاحب التعليق أو صاحب الفقرة — التحقق من الصلاحية يتم في الواجهة). */
+    suspend fun deleteComment(postId: String, commentId: String) {
+        commentsRef.child(postId).child(commentId).removeValue().await()
+        adjustCount(postId, "commentsCount", -1)
+        recomputeShaabiya(postId)
+    }
+
+    /** إعجاب/إلغاء إعجاب ⭐ بتعليق — يمنع الازدواجية عبر فهرس /commentLikes مع فهرس معكوس لعرض حالة المستخدم فوريًا. */
+    suspend fun toggleCommentLike(postId: String, commentId: String, uid: String) {
+        val likeRef = commentLikesRef.child(commentId).child(uid)
+        val alreadyLiked = likeRef.get().await().exists()
+        val commentCountRef = commentsRef.child(postId).child(commentId).child("likesCount")
+        if (alreadyLiked) {
+            likeRef.removeValue().await()
+            userCommentLikesRef.child(uid).child(commentId).removeValue().await()
+            commentCountRef.setValue(ServerValue.increment(-1)).await()
+        } else {
+            likeRef.setValue(true).await()
+            userCommentLikesRef.child(uid).child(commentId).setValue(true).await()
+            commentCountRef.setValue(ServerValue.increment(1)).await()
+        }
+    }
+
+    /** يراقب فوريًا معرّفات التعليقات التي أعجب بها [uid] — تُستخدم لتلوين زر ⭐ الصحيح في ورقة التعليقات. */
+    fun observeMyCommentLikes(uid: String): Flow<Set<String>> = callbackFlow {
+        val ref = userCommentLikesRef.child(uid)
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                trySend(snapshot.children.mapNotNull { it.key }.toSet())
             }
             override fun onCancelled(error: DatabaseError) { close(error.toException()) }
         }
