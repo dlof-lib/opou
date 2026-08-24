@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
 
 class ProfileViewModel(
     private val userRepo: UserRepository = UserRepository(),
@@ -24,6 +25,9 @@ class ProfileViewModel(
 ) : ViewModel() {
 
     private val _room = MutableStateFlow<User?>(null)
+    private var loadJob: Job? = null
+    private var postsJob: Job? = null
+    private var loadedUid: String? = null
     val room: StateFlow<User?> = _room.asStateFlow()
 
     private val _isTeking = MutableStateFlow(false)
@@ -43,7 +47,18 @@ class ProfileViewModel(
     val currentUid: String? get() = authRepo.currentUserId
 
     fun load(uid: String) {
-        viewModelScope.launch {
+        if (uid.isBlank()) {
+            _room.value = null
+            _errorMessage.value = "معرّف الحساب غير صالح"
+            return
+        }
+        if (loadedUid == uid && loadJob?.isActive == true) return
+        loadedUid = uid
+
+        loadJob?.cancel()
+        postsJob?.cancel()
+
+        loadJob = viewModelScope.launch {
             userRepo.observeUser(uid).collect { _room.value = it }
         }
         val myUid = authRepo.currentUserId
@@ -55,10 +70,21 @@ class ProfileViewModel(
                 _isBlocked.value = runCatching { blockRepo.isBlocked(myUid, uid) }.getOrDefault(false)
             }
         }
-        viewModelScope.launch {
-            val followingIds = myUid?.let { runCatching { userRepo.getTekingIds(it).toSet() }.getOrDefault(emptySet()) } ?: emptySet()
-            val mutedIds = myUid?.let { runCatching { blockRepo.getMutedIds(it) }.getOrDefault(emptySet()) } ?: emptySet()
-            postRepo.observeUserPosts(uid, myUid, followingIds, mutedIds).collect { _posts.value = it }
+        postsJob = viewModelScope.launch {
+            runCatching {
+                val followingIds = myUid?.let {
+                    runCatching { userRepo.getTekingIds(it).toSet() }.getOrDefault(emptySet())
+                } ?: emptySet()
+                val mutedIds = myUid?.let {
+                    runCatching { blockRepo.getMutedIds(it) }.getOrDefault(emptySet())
+                } ?: emptySet()
+                postRepo.observeUserPosts(uid, myUid, followingIds, mutedIds)
+                    .collect { _posts.value = it }
+            }.onFailure {
+                if (it !is kotlinx.coroutines.CancellationException) {
+                    _posts.value = emptyList()
+                }
+            }
         }
     }
 
