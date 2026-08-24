@@ -40,7 +40,15 @@ $filename = bin2hex(random_bytes(16)) . '.' . $ext;
 $destination = $uploadDir . $filename;
 
 // تصغير الصورة إلى حد أقصى 512x512 مع الحفاظ على النسبة
-[$width, $height] = getimagesize($file['tmp_name']);
+$dimensions = getimagesize($file['tmp_name']);
+if ($dimensions === false) {
+    // الملف اجتاز فحص mime_content_type لكنه ليس صورة صالحة فعليًا (تالفة أو مزيّفة الامتداد)
+    json_response(['error' => 'الملف ليس صورة صالحة'], 400);
+}
+[$width, $height] = $dimensions;
+if ($width <= 0 || $height <= 0) {
+    json_response(['error' => 'أبعاد الصورة غير صالحة'], 400);
+}
 $maxDim = 512;
 $scale = min(1, $maxDim / max($width, $height));
 $newWidth = (int) round($width * $scale);
@@ -51,6 +59,9 @@ $srcImage = match ($mime) {
     'image/webp' => imagecreatefromwebp($file['tmp_name']),
     default => imagecreatefromjpeg($file['tmp_name']),
 };
+if ($srcImage === false) {
+    json_response(['error' => 'تعذّر قراءة بيانات الصورة'], 400);
+}
 
 $dstImage = imagecreatetruecolor($newWidth, $newHeight);
 if ($mime === 'image/png') {
