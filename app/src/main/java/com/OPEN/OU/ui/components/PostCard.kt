@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
@@ -72,7 +73,11 @@ fun PostCard(
     onTogglePin: ((Boolean) -> Unit)? = null,
     onBlockAuthor: (() -> Unit)? = null,
     onEditPost: (() -> Unit)? = null,
-    onDeletePost: (() -> Unit)? = null
+    onDeletePost: (() -> Unit)? = null,
+    /** يفتح شاشة السلسلة الكاملة التي تنتمي إليها هذه الفقرة (يُمرَّر post.threadId). */
+    onOpenThread: ((String) -> Unit)? = null,
+    /** يبدأ إنشاء فقرة جديدة كمتابعة لهذه الفقرة ضمن سلسلة (متاح فقط لصاحب الفقرة). */
+    onContinueThread: (() -> Unit)? = null
 ) {
     var showDeletePostConfirm by remember { mutableStateOf(false) }
     val customBackground = post.backgroundColor.toColorOrNull()
@@ -145,7 +150,7 @@ fun PostCard(
                         MetaLine(post)
                     }
 
-                    if (onTogglePin != null || onBlockAuthor != null || onEditPost != null || onDeletePost != null) {
+                    if (onTogglePin != null || onBlockAuthor != null || onEditPost != null || onDeletePost != null || onContinueThread != null) {
                         var menuExpanded by remember { mutableStateOf(false) }
                         Box {
                             IconButton(onClick = { menuExpanded = true }) {
@@ -157,6 +162,13 @@ fun PostCard(
                                         text = { Text(if (post.isPinned) "إلغاء التثبيت" else "تثبيت الفقرة") },
                                         leadingIcon = { Icon(Icons.Filled.PushPin, contentDescription = null) },
                                         onClick = { menuExpanded = false; onTogglePin(!post.isPinned) }
+                                    )
+                                }
+                                if (isOwnPost && onContinueThread != null) {
+                                    DropdownMenuItem(
+                                        text = { Text("متابعة بفقرة جديدة في السلسلة") },
+                                        leadingIcon = { Icon(Icons.Filled.FormatListNumbered, contentDescription = null) },
+                                        onClick = { menuExpanded = false; onContinueThread() }
                                     )
                                 }
                                 if (isOwnPost && onEditPost != null) {
@@ -181,6 +193,36 @@ fun PostCard(
                                     )
                                 }
                             }
+                        }
+                    }
+                }
+
+                if (post.isThreadPost) {
+                    Spacer(Modifier.height(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = OpouAccentGreen.copy(alpha = 0.10f),
+                        modifier = Modifier.clickable(enabled = onOpenThread != null) {
+                            onOpenThread?.invoke(post.threadId)
+                        }
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Icon(
+                                Icons.Filled.FormatListNumbered,
+                                contentDescription = null,
+                                tint = OpouAccentGreen,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text = "سلسلة فقرات · الجزء ${post.threadPosition}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = OpouAccentGreen,
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
                     }
                 }
