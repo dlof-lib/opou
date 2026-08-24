@@ -23,14 +23,24 @@ class CommentsViewModel(
     private val _comments = MutableStateFlow<List<Comment>>(emptyList())
     val comments: StateFlow<List<Comment>> = _comments.asStateFlow()
 
+    private val _likedCommentIds = MutableStateFlow<Set<String>>(emptySet())
+    val likedCommentIds: StateFlow<Set<String>> = _likedCommentIds.asStateFlow()
+
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+    /** معرّف المستخدم الحالي — تُستخدم في CommentsSheet لتحديد من يملك صلاحية حذف تعليق. */
+    val currentUid: String? get() = authRepo.currentUserId
 
     fun clearError() { _errorMessage.value = null }
 
     fun load(postId: String) {
         viewModelScope.launch {
             postRepo.observeComments(postId).collect { _comments.value = it }
+        }
+        val uid = authRepo.currentUserId ?: return
+        viewModelScope.launch {
+            postRepo.observeMyCommentLikes(uid).collect { _likedCommentIds.value = it }
         }
     }
 
@@ -46,7 +56,9 @@ class CommentsViewModel(
         username: String,
         avatar: String,
         postAuthorId: String? = null,
-        avatarBase64: String = ""
+        avatarBase64: String = "",
+        /** التعليق الذي يُردّ عليه هذا التعليق الجديد (إن وُجد) — يُنشئ خيط ردّ بمستوى واحد. */
+        replyTo: Comment? = null
     ) {
         val uid = authRepo.currentUserId ?: return
         if (content.isBlank()) return
@@ -65,12 +77,30 @@ class CommentsViewModel(
                     authorUsername = username,
                     authorAvatarUrl = avatar,
                     authorAvatarBase64 = avatarBase64,
-                    content = content
+                    content = content,
+                    parentCommentId = replyTo?.commentId.orEmpty(),
+                    replyToUsername = replyTo?.authorUsername.orEmpty()
                 )
             )
             if (postAuthorId != null && postAuthorId != uid) {
                 notifyPostAuthorBestEffort(postAuthorId, username)
             }
+        }
+    }
+
+    /** إعجاب/إلغاء إعجاب ⭐ بتعليق. */
+    fun toggleLike(postId: String, comment: Comment, likerUsername: String) {
+        val uid = authRepo.currentUserId ?: return
+        viewModelScope.launch {
+            runCatching { postRepo.toggleCommentLike(postId, comment.commentId, uid) }
+        }
+    }
+
+    /** يحذف تعليقًا — الصلاحية (صاحب التعليق أو صاحب الفقرة) تُتحقق منها الواجهة (CommentsSheet) قبل استدعائها. */
+    fun deleteComment(postId: String, commentId: String) {
+        viewModelScope.launch {
+            runCatching { postRepo.deleteComment(postId, commentId) }
+                .onFailure { _errorMessage.value = it.message ?: "تعذّر حذف التعليق" }
         }
     }
 
