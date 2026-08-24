@@ -68,18 +68,18 @@ object NativeBridge {
         }
 
     /** فك ترميز نص Base64 إلى مصفوفة بايتات، مع نسخة احتياطية آمنة. */
-    fun decodeBase64(encoded: String): ByteArray =
-        try {
-            if (isNativeAvailable) decodeBase64Native(encoded)
-            else Base64.decode(encoded, Base64.DEFAULT)
+    fun decodeBase64(encoded: String): ByteArray {
+        // Image decoding stays on Android's managed Base64 path. C++ remains
+        // a helper for native scoring, fingerprints and encoding, while a
+        // malformed/large profile image cannot terminate the app through JNI.
+        return try {
+            val payload = encoded.substringAfter("base64,", encoded).trim()
+            Base64.decode(payload, Base64.DEFAULT)
         } catch (e: Throwable) {
-            Log.w(TAG, "فشل فك الترميز الأصلي، التحويل للنسخة الاحتياطية", e)
-            try {
-                Base64.decode(encoded, Base64.DEFAULT)
-            } catch (inner: Throwable) {
-                ByteArray(0)
-            }
+            Log.w(TAG, "فشل فك Base64، سيتم إرجاع صورة فارغة", e)
+            ByteArray(0)
         }
+    }
 
     // ---------------------------------------------------------------------
     // نسخ احتياطية بلغة Kotlin خالصة (لا تعتمد على JNI إطلاقًا)
