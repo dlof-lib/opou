@@ -100,7 +100,7 @@ class PostRepository(
      * (SuggestionsWorker) في الخلفية لحساب "فقرات مقترحة لك" دون فتح استماع دائم.
      */
     suspend fun getAllPostsOnce(): List<Post> =
-        postsRef.get().await().children.mapNotNull { it.getValue(Post::class.java) }
+        postsRef.get().await().children.mapNotNull { runCatching { it.getValue(Post::class.java) }.getOrNull() }
 
     /**
      * يجلب خريطة تفاعلات مستخدم معيّن دفعة واحدة: postId -> "LIKE"|"DISLIKE".
@@ -126,7 +126,7 @@ class PostRepository(
         val query: Query = postsRef.orderByChild("createdAt").limitToLast(limit)
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val list = snapshot.children.mapNotNull { it.getValue(Post::class.java) }
+                val list = snapshot.children.mapNotNull { runCatching { it.getValue(Post::class.java) }.getOrNull() }
                     .filter { isVisibleTo(it, viewerId, viewerFollowingIds, mutedIds) }
                     .sortedByDescending { it.createdAt }
                 trySend(list)
@@ -147,7 +147,7 @@ class PostRepository(
         val query: Query = postsRef.orderByChild("shaabiyaScore").limitToLast(limit)
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val list = snapshot.children.mapNotNull { it.getValue(Post::class.java) }
+                val list = snapshot.children.mapNotNull { runCatching { it.getValue(Post::class.java) }.getOrNull() }
                     .filter { isVisibleTo(it, viewerId, viewerFollowingIds, mutedIds) }
                     .sortedByDescending { it.shaabiyaScore }
                 trySend(list)
@@ -171,7 +171,7 @@ class PostRepository(
         val query: Query = postsRef.orderByChild("authorId").equalTo(authorUid)
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val list = snapshot.children.mapNotNull { it.getValue(Post::class.java) }
+                val list = snapshot.children.mapNotNull { runCatching { it.getValue(Post::class.java) }.getOrNull() }
                     .filter { isVisibleTo(it, viewerId, viewerFollowingIds, mutedIds) }
                     .sortedWith(compareByDescending<Post> { it.isPinned }.thenByDescending { it.createdAt })
                 trySend(list)
@@ -212,7 +212,7 @@ class PostRepository(
         val query: Query = postsRef.orderByChild("threadId").equalTo(threadId)
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val list = snapshot.children.mapNotNull { it.getValue(Post::class.java) }
+                val list = snapshot.children.mapNotNull { runCatching { it.getValue(Post::class.java) }.getOrNull() }
                     .sortedBy { it.threadPosition }
                 trySend(list)
             }
@@ -331,7 +331,7 @@ class PostRepository(
         val ref = commentsRef.child(postId).orderByChild("createdAt")
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val list = snapshot.children.mapNotNull { it.getValue(Comment::class.java) }
+                val list = snapshot.children.mapNotNull { runCatching { it.getValue(Comment::class.java) }.getOrNull() }
                 trySend(list)
             }
             override fun onCancelled(error: DatabaseError) { close(error.toException()) }
