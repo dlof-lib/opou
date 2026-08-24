@@ -80,4 +80,12 @@
     <string name="no_posts_yet">لا توجد فقرات بعد — كن أول من ينشر!</string>
     <string name="no_trending_yet">لا توجد فقرات شعبية بعد</string>
     <string name="no_comments_yet">لا توجد تعليقات بعد — كن أول من يعلّق</string>
+
+    <!-- اختصارات التطبيق (الضغط المطوّل على الأيقونة في الشاشة الرئيسية) -->
+    <string name="shortcut_new_post_short">فقرة جديدة</string>
+    <string name="shortcut_new_post_long">إنشاء فقرة جديدة</string>
+    <string name="shortcut_tekers_short">التيكرز</string>
+    <string name="shortcut_tekers_long">فتح التيكرز</string>
+    <string name="shortcut_account_short">غرفتي</string>
+    <string name="shortcut_account_long">فتح غرفتي</string>
 </resources>
