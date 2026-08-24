@@ -32,10 +32,10 @@ data class User(
     // ===== ميزات الحساب =====
     /** حالة الحساب: ACTIVE / DEACTIVATED — راجع AccountStatus */
     val accountStatus: String = "ACTIVE",
-    /** تفعيل التحقق بخطوتين (رمز PIN إضافي بعد كلمة المرور) */
+    /** تفعيل التحقق بخطوتين (رمز PIN إضافي بعد كلمة المرور) — العلم فقط هنا لأنه غير حسّاس؛
+     *  بصمة PIN نفسها مخزّنة في عقدة منفصلة محمية /userSecrets/{uid} وليس هنا، لأن /users/{uid}
+     *  مقروءة للجميع (لعرض الغرف العامة) ولا يجب أن تكون بصمة PIN قابلة للقراءة من أي زائر. */
     val twoFactorEnabled: Boolean = false,
-    /** بصمة (SHA-256) لرمز PIN الخاص بالتحقق بخطوتين — لا يُخزَّن الرمز نفسه أبدًا */
-    val twoFactorPinHash: String = "",
     /** تصنيفات إضافية متعددة للغرفة (بجانب اسم المجتمع الأساسي) */
     val categories: List<String> = emptyList(),
     /** روابط التواصل الاجتماعي: المفتاح = اسم المنصة (instagram/x/youtube/tiktok/snapchat/website)، القيمة = الرابط */
