@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -13,13 +16,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.OPEN.OU.data.model.CustomButton
 import com.OPEN.OU.ui.components.Base64Image
 import com.OPEN.OU.ui.components.ImagePickerButton
 import com.OPEN.OU.ui.components.ResponsiveContent
 import com.OPEN.OU.ui.theme.OpouBrandGradient
 import com.OPEN.OU.util.ImageCodec
+
+/** المنصات المدعومة كحقول روابط تواصل ثابتة، بترتيب العرض. */
+private val SOCIAL_PLATFORMS = listOf(
+    "instagram" to "إنستغرام",
+    "x" to "X (تويتر)",
+    "youtube" to "يوتيوب",
+    "tiktok" to "تيك توك",
+    "snapchat" to "سناب شات",
+    "website" to "الموقع الشخصي"
+)
 
 /**
  * شاشة تعديل الغرفة الكاملة: السيرة الذاتية، اسم المجتمع، الصورة الرمزية، وصورة البانر.
@@ -39,6 +54,9 @@ fun EditRoomScreen(
 
     var communityName by remember { mutableStateOf("") }
     var bio by remember { mutableStateOf("") }
+    var categoriesText by remember { mutableStateOf("") }
+    var socialLinks by remember { mutableStateOf(mutableMapOf<String, String>()) }
+    var customButtons by remember { mutableStateOf(listOf<CustomButton>()) }
     var pendingAvatar by remember { mutableStateOf<ImageCodec.EncodedImage?>(null) }
     var pendingBanner by remember { mutableStateOf<ImageCodec.EncodedImage?>(null) }
     var imageError by remember { mutableStateOf<String?>(null) }
@@ -53,6 +71,9 @@ fun EditRoomScreen(
         if (user != null && !initialized) {
             communityName = user.communityName
             bio = user.bio
+            categoriesText = user.categories.joinToString(", ")
+            socialLinks = user.socialLinks.toMutableMap()
+            customButtons = user.customButtons
             initialized = true
         }
     }
@@ -75,6 +96,10 @@ fun EditRoomScreen(
                         pendingAvatar?.let { viewModel.updateAvatar(uid, it.base64) }
                         pendingBanner?.let { viewModel.updateBanner(uid, it.base64) }
                         viewModel.updateRoomInfo(uid, communityName = communityName, bio = bio)
+                        val categories = categoriesText.split(",").map { it.trim() }.filter { it.isNotBlank() }
+                        viewModel.updateCategories(uid, categories)
+                        viewModel.updateSocialLinks(uid, socialLinks.filterValues { it.isNotBlank() })
+                        viewModel.updateCustomButtons(uid, customButtons.filter { it.label.isNotBlank() && it.url.isNotBlank() })
                         onDone()
                     }) { Text("حفظ") }
                 }
@@ -176,6 +201,71 @@ fun EditRoomScreen(
                     shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = categoriesText,
+                    onValueChange = { categoriesText = it },
+                    label = { Text("التصنيفات (افصل بينها بفاصلة)") },
+                    placeholder = { Text("مثال: تقنية، ألعاب، طبخ") },
+                    singleLine = true,
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(Modifier.height(24.dp))
+                Text("روابط التواصل الاجتماعي", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(10.dp))
+                SOCIAL_PLATFORMS.forEach { (key, labelAr) ->
+                    OutlinedTextField(
+                        value = socialLinks[key].orEmpty(),
+                        onValueChange = { socialLinks = (socialLinks + (key to it)).toMutableMap() },
+                        label = { Text(labelAr) },
+                        placeholder = { Text("رابط اختياري") },
+                        singleLine = true,
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Text("أزرار مخصّصة", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    TextButton(onClick = { customButtons = customButtons + CustomButton() }) {
+                        Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("إضافة زر")
+                    }
+                }
+                Spacer(Modifier.height(6.dp))
+                customButtons.forEachIndexed { index, button ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            OutlinedTextField(
+                                value = button.label,
+                                onValueChange = { new -> customButtons = customButtons.toMutableList().also { it[index] = button.copy(label = new) } },
+                                label = { Text("تسمية الزر") },
+                                singleLine = true,
+                                shape = MaterialTheme.shapes.medium,
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
+                            )
+                            OutlinedTextField(
+                                value = button.url,
+                                onValueChange = { new -> customButtons = customButtons.toMutableList().also { it[index] = button.copy(url = new) } },
+                                label = { Text("الرابط") },
+                                singleLine = true,
+                                shape = MaterialTheme.shapes.medium,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        IconButton(onClick = { customButtons = customButtons.toMutableList().also { it.removeAt(index) } }) {
+                            Icon(Icons.Filled.Close, contentDescription = "حذف الزر")
+                        }
+                    }
+                }
             }
         }
         }
