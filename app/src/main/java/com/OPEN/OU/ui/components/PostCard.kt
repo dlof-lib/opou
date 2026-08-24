@@ -7,9 +7,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Block
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
@@ -71,12 +68,8 @@ fun PostCard(
     modifier: Modifier = Modifier,
     isOwnPost: Boolean = false,
     onTogglePin: ((Boolean) -> Unit)? = null,
-    onBlockAuthor: (() -> Unit)? = null,
-    onEditPost: (() -> Unit)? = null,
-    onDeletePost: (() -> Unit)? = null
+    onBlockAuthor: (() -> Unit)? = null
 ) {
-    var showDeleteConfirm by remember { mutableStateOf(false) }
-    var showImageViewer by remember { mutableStateOf(false) }
     val customBackground = post.backgroundColor.toColorOrNull()
 
     Card(
@@ -109,48 +102,6 @@ fun PostCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.SemiBold
                     )
-                }
-            }
-
-            if (post.isReplyToComment) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.FormatQuote,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(12.dp)
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = "ردًا على تعليق @${post.replyCommentAuthorUsername}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-                if (post.replyCommentContent.isNotBlank()) {
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp),
-                        shape = RoundedCornerShape(10.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                    ) {
-                        Text(
-                            text = post.replyCommentContent,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 3,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(10.dp)
-                        )
-                    }
-                    Spacer(Modifier.height(6.dp))
                 }
             }
 
@@ -189,7 +140,7 @@ fun PostCard(
                         MetaLine(post)
                     }
 
-                    if (onTogglePin != null || onBlockAuthor != null || onEditPost != null || onDeletePost != null) {
+                    if (onTogglePin != null || onBlockAuthor != null) {
                         var menuExpanded by remember { mutableStateOf(false) }
                         Box {
                             IconButton(onClick = { menuExpanded = true }) {
@@ -201,20 +152,6 @@ fun PostCard(
                                         text = { Text(if (post.isPinned) "إلغاء التثبيت" else "تثبيت الفقرة") },
                                         leadingIcon = { Icon(Icons.Filled.PushPin, contentDescription = null) },
                                         onClick = { menuExpanded = false; onTogglePin(!post.isPinned) }
-                                    )
-                                }
-                                if (isOwnPost && onEditPost != null) {
-                                    DropdownMenuItem(
-                                        text = { Text("تعديل الفقرة") },
-                                        leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
-                                        onClick = { menuExpanded = false; onEditPost() }
-                                    )
-                                }
-                                if (isOwnPost && onDeletePost != null) {
-                                    DropdownMenuItem(
-                                        text = { Text("حذف الفقرة") },
-                                        leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null) },
-                                        onClick = { menuExpanded = false; showDeleteConfirm = true }
                                     )
                                 }
                                 if (!isOwnPost && onBlockAuthor != null) {
@@ -231,7 +168,7 @@ fun PostCard(
 
                 if (post.content.isNotBlank()) {
                     Spacer(Modifier.height(10.dp))
-                    ExpandableParagraphText(post, onOpenProfile = onOpenProfile)
+                    ExpandableParagraphText(post)
                 }
 
                 if (post.customHtml.isNotBlank()) {
@@ -288,7 +225,6 @@ fun PostCard(
                                 .fillMaxWidth()
                                 .height(200.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .clickable { showImageViewer = true }
                         )
                     }
                 }
@@ -313,30 +249,6 @@ fun PostCard(
                 thickness = 0.6.dp
             )
         }
-    }
-
-    if (showImageViewer && post.imageBase64.isNotBlank()) {
-        ImageViewerDialog(
-            base64 = post.imageBase64,
-            onDismiss = { showImageViewer = false }
-        )
-    }
-
-    if (showDeleteConfirm) {
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("حذف الفقرة؟") },
-            text = { Text("لن تتمكن من استرجاع هذه الفقرة وتعليقاتها بعد الحذف.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showDeleteConfirm = false
-                    onDeletePost?.invoke()
-                }) { Text("حذف", color = MaterialTheme.colorScheme.error) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) { Text("إلغاء") }
-            }
-        )
     }
 }
 
@@ -366,15 +278,6 @@ private fun MetaLine(post: Post) {
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-
-        if (post.editedAt != null) {
-            Dot()
-            Text(
-                text = "تم التعديل",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
 
         if (privacy != ParagraphPrivacy.PUBLIC) {
             val (icon, label) = when (privacy) {
@@ -434,7 +337,7 @@ private fun Dot() {
  * يُطوى النص تلقائيًا بعد MAX_COLLAPSED_LINES سطرًا مع زر لتوسيعه.
  */
 @Composable
-private fun ExpandableParagraphText(post: Post, onOpenProfile: (String) -> Unit) {
+private fun ExpandableParagraphText(post: Post) {
     val MAX_COLLAPSED_LINES = 6
     var expanded by remember(post.postId) { mutableStateOf(false) }
     var isOverflowing by remember(post.postId) { mutableStateOf(false) }
@@ -442,7 +345,6 @@ private fun ExpandableParagraphText(post: Post, onOpenProfile: (String) -> Unit)
     val textColor = post.textColor.toColorOrNull() ?: MaterialTheme.colorScheme.onSurface
     val textBg = post.textBackgroundColor.toColorOrNull()
     val textStyle = MaterialTheme.typography.bodyLarge.copy(
-        color = textColor,
         fontWeight = if (post.textBold) FontWeight.Bold else FontWeight.Normal,
         textDecoration = if (post.textUnderline) TextDecoration.Underline else TextDecoration.None,
         lineHeight = MaterialTheme.typography.bodyLarge.lineHeight
@@ -455,15 +357,15 @@ private fun ExpandableParagraphText(post: Post, onOpenProfile: (String) -> Unit)
                 .padding(10.dp)
         } else Modifier
     ) {
-        MentionAwareText(
-            text = post.content,
+        Text(
+            post.content,
             style = textStyle,
+            color = textColor,
             maxLines = if (expanded) Int.MAX_VALUE else MAX_COLLAPSED_LINES,
             overflow = TextOverflow.Ellipsis,
             onTextLayout = { result ->
                 if (!expanded) isOverflowing = result.hasVisualOverflow
-            },
-            onOpenProfile = onOpenProfile
+            }
         )
         if (isOverflowing) {
             TextButton(
