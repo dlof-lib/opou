@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FormatBold
+import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.FormatUnderlined
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,6 +29,7 @@ import com.OPEN.OU.data.model.ParagraphPrivacy
 import com.OPEN.OU.data.model.Post
 import com.OPEN.OU.ui.components.Base64Image
 import com.OPEN.OU.ui.components.ImagePickerButton
+import com.OPEN.OU.ui.theme.OpouAccentGreen
 import com.OPEN.OU.util.ImageCodec
 import com.OPEN.OU.util.ParagraphColorPalette
 import com.OPEN.OU.util.SafeHtml
@@ -48,7 +50,9 @@ fun CreatePostScreen(
     /** إن كانت غير null، تفتح الشاشة في وضع "تعديل" لفقرة موجودة بدل إنشاء فقرة جديدة. */
     editingPost: Post? = null,
     /** إن كانت غير null (ووضع الإنشاء وليس التعديل)، تُنشر الفقرة الجديدة كرد على هذا التعليق. */
-    quotedComment: Comment? = null
+    quotedComment: Comment? = null,
+    /** إن كانت غير null (ووضع الإنشاء وليس التعديل)، تُنشر الفقرة الجديدة كمتابعة لسلسلة تبدأ من (أو تمر عبر) هذه الفقرة. */
+    continuingFromPost: Post? = null
 ) {
     val isEditing = editingPost != null
     var text by remember(editingPost?.postId) { mutableStateOf(editingPost?.content.orEmpty()) }
@@ -80,6 +84,7 @@ fun CreatePostScreen(
                         when {
                             isEditing -> "تعديل الفقرة"
                             quotedComment != null -> "الرد بفقرة"
+                            continuingFromPost != null -> "متابعة السلسلة"
                             else -> stringResource(R.string.feed_title)
                         }
                     )
@@ -124,6 +129,7 @@ fun CreatePostScreen(
                                     replyCommentAuthorId = quotedComment?.authorId.orEmpty(),
                                     replyCommentAuthorUsername = quotedComment?.authorUsername.orEmpty(),
                                     replyCommentContent = quotedComment?.content.orEmpty(),
+                                    continueFromPost = continuingFromPost,
                                     onDone = onDone
                                 )
                             }
@@ -166,6 +172,42 @@ fun CreatePostScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 3
                         )
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+            }
+
+            if (continuingFromPost != null && !isEditing) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    color = OpouAccentGreen.copy(alpha = 0.08f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, OpouAccentGreen.copy(alpha = 0.25f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Filled.FormatListNumbered,
+                            contentDescription = null,
+                            tint = OpouAccentGreen,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text(
+                                "متابعة سلسلة فقرات",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = OpouAccentGreen
+                            )
+                            Text(
+                                "ستُنشر هذه الفقرة كجزء تالٍ لفقرتك السابقة في نفس السلسلة.",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
                 Spacer(Modifier.height(12.dp))
