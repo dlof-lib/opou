@@ -28,7 +28,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.OPEN.OU.R
-import com.OPEN.OU.data.model.Comment
 import com.OPEN.OU.data.model.Post
 import com.OPEN.OU.data.repository.AuthRepository
 import com.OPEN.OU.data.repository.UserRepository
@@ -54,20 +53,11 @@ private object Routes {
 private enum class MainTab { HOME, TEKERS, ACCOUNT }
 
 @Composable
-fun OpouNavGraph(
-    pendingShortcutAction: String? = null,
-    onShortcutConsumed: () -> Unit = {}
-) {
+fun OpouNavGraph() {
     val navController = rememberNavController()
     val authRepo = remember { AuthRepository() }
     val userRepo = remember { UserRepository() }
     val startDestination = if (authRepo.currentUserId != null) Routes.MAIN else Routes.LOGIN
-
-    // التبويب الأولي لشاشة MAIN — تُغيَّر قيمته عند تفعيل اختصار "التيكرز" أو
-    // "غرفتي" (راجع LaunchedEffect أدناه)، وتُستخدم كمفتاح تصفير لحالة `tab`
-    // المحفوظة (rememberSaveable) داخل composable(Routes.MAIN) لإجبارها على
-    // اعتماد التبويب المطلوب فورًا.
-    var initialMainTab by remember { mutableStateOf(MainTab.HOME) }
 
     // بيانات المستخدم الحالي الحقيقية، تُقرأ فوريًا (Realtime) من /users/{uid}
     var currentUsername by remember { mutableStateOf("") }
@@ -85,32 +75,7 @@ fun OpouNavGraph(
         }
     }
 
-    // معالجة اختصارات التطبيق الثابتة (راجع res/xml/shortcuts.xml وMainActivity):
-    // تُطبَّق فقط إن كان المستخدم مسجّلاً دخوله بالفعل (المطلوب لإتاحة أي من
-    // الشاشات الثلاث). تُستهلك مرة واحدة عبر onShortcutConsumed حتى لا تُعاد
-    // معالجتها عند أي إعادة تركيب لاحقة لا علاقة لها بضغطة اختصار جديدة.
-    LaunchedEffect(pendingShortcutAction, authRepo.currentUserId) {
-        val uid = authRepo.currentUserId
-        val action = pendingShortcutAction
-        if (uid == null || action == null) return@LaunchedEffect
-        when (action) {
-            "new_post" -> navController.navigate(Routes.CREATE_POST)
-            "tekers" -> {
-                initialMainTab = MainTab.TEKERS
-                navController.popBackStack(Routes.MAIN, inclusive = false)
-            }
-            "account" -> {
-                initialMainTab = MainTab.ACCOUNT
-                navController.popBackStack(Routes.MAIN, inclusive = false)
-            }
-        }
-        onShortcutConsumed()
-    }
-
     var activeCommentsPost by remember { mutableStateOf<Post?>(null) }
-    // فقرة قيد التعديل حاليًا (تُفتح CREATE_POST بوضع تعديل عوضًا عن إنشاء) أو تعليق مُقتبَس للرد عليه بفقرة جديدة
-    var editingPost by remember { mutableStateOf<Post?>(null) }
-    var quotingComment by remember { mutableStateOf<Comment?>(null) }
 
     NavHost(navController = navController, startDestination = startDestination) {
 
@@ -142,7 +107,7 @@ fun OpouNavGraph(
 
         composable(Routes.MAIN) {
             val myUid = authRepo.currentUserId
-            var tab by rememberSaveable(initialMainTab) { mutableStateOf(initialMainTab) }
+            var tab by rememberSaveable { mutableStateOf(MainTab.HOME) }
 
             Scaffold(
                 bottomBar = {
@@ -160,11 +125,7 @@ fun OpouNavGraph(
                                 currentAvatarBase64 = currentAvatarBase64,
                                 onOpenProfile = { uid -> navController.navigate(Routes.profile(uid)) },
                                 onOpenComments = { post -> activeCommentsPost = post },
-                                onCreatePost = { navController.navigate(Routes.CREATE_POST) },
-                                onEditPost = { post ->
-                                    editingPost = post
-                                    navController.navigate(Routes.CREATE_POST)
-                                }
+                                onCreatePost = { navController.navigate(Routes.CREATE_POST) }
                             )
 
                             activeCommentsPost?.let { post ->
@@ -176,16 +137,7 @@ fun OpouNavGraph(
                                     currentAvatarBase64 = currentAvatarBase64,
                                     viewModel = commentsVm,
                                     postAuthorId = post.authorId,
-                                    onDismiss = { activeCommentsPost = null },
-                                    onOpenProfile = { uid ->
-                                        activeCommentsPost = null
-                                        navController.navigate(Routes.profile(uid))
-                                    },
-                                    onQuoteAsParagraph = { comment ->
-                                        quotingComment = comment
-                                        activeCommentsPost = null
-                                        navController.navigate(Routes.CREATE_POST)
-                                    }
+                                    onDismiss = { activeCommentsPost = null }
                                 )
                             }
                         }
@@ -223,18 +175,8 @@ fun OpouNavGraph(
                 currentUsername = currentUsername,
                 currentAvatar = currentAvatar,
                 currentAvatarBase64 = currentAvatarBase64,
-                editingPost = editingPost,
-                quotedComment = quotingComment,
-                onDone = {
-                    editingPost = null
-                    quotingComment = null
-                    navController.popBackStack()
-                },
-                onBack = {
-                    editingPost = null
-                    quotingComment = null
-                    navController.popBackStack()
-                }
+                onDone = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
             )
         }
 
