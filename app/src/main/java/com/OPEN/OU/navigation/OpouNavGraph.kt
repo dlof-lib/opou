@@ -28,6 +28,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.OPEN.OU.R
+import com.OPEN.OU.data.model.Comment
 import com.OPEN.OU.data.model.Post
 import com.OPEN.OU.data.repository.AuthRepository
 import com.OPEN.OU.data.repository.UserRepository
@@ -76,6 +77,9 @@ fun OpouNavGraph() {
     }
 
     var activeCommentsPost by remember { mutableStateOf<Post?>(null) }
+    // فقرة قيد التعديل حاليًا (تُفتح CREATE_POST بوضع تعديل عوضًا عن إنشاء) أو تعليق مُقتبَس للرد عليه بفقرة جديدة
+    var editingPost by remember { mutableStateOf<Post?>(null) }
+    var quotingComment by remember { mutableStateOf<Comment?>(null) }
 
     NavHost(navController = navController, startDestination = startDestination) {
 
@@ -125,7 +129,11 @@ fun OpouNavGraph() {
                                 currentAvatarBase64 = currentAvatarBase64,
                                 onOpenProfile = { uid -> navController.navigate(Routes.profile(uid)) },
                                 onOpenComments = { post -> activeCommentsPost = post },
-                                onCreatePost = { navController.navigate(Routes.CREATE_POST) }
+                                onCreatePost = { navController.navigate(Routes.CREATE_POST) },
+                                onEditPost = { post ->
+                                    editingPost = post
+                                    navController.navigate(Routes.CREATE_POST)
+                                }
                             )
 
                             activeCommentsPost?.let { post ->
@@ -137,7 +145,16 @@ fun OpouNavGraph() {
                                     currentAvatarBase64 = currentAvatarBase64,
                                     viewModel = commentsVm,
                                     postAuthorId = post.authorId,
-                                    onDismiss = { activeCommentsPost = null }
+                                    onDismiss = { activeCommentsPost = null },
+                                    onOpenProfile = { uid ->
+                                        activeCommentsPost = null
+                                        navController.navigate(Routes.profile(uid))
+                                    },
+                                    onQuoteAsParagraph = { comment ->
+                                        quotingComment = comment
+                                        activeCommentsPost = null
+                                        navController.navigate(Routes.CREATE_POST)
+                                    }
                                 )
                             }
                         }
@@ -175,8 +192,18 @@ fun OpouNavGraph() {
                 currentUsername = currentUsername,
                 currentAvatar = currentAvatar,
                 currentAvatarBase64 = currentAvatarBase64,
-                onDone = { navController.popBackStack() },
-                onBack = { navController.popBackStack() }
+                editingPost = editingPost,
+                quotedComment = quotingComment,
+                onDone = {
+                    editingPost = null
+                    quotingComment = null
+                    navController.popBackStack()
+                },
+                onBack = {
+                    editingPost = null
+                    quotingComment = null
+                    navController.popBackStack()
+                }
             )
         }
 
