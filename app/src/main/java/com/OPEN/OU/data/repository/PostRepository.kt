@@ -1,5 +1,6 @@
 package com.OPEN.OU.data.repository
 
+import com.OPEN.OU.util.NativeBridge
 import com.OPEN.OU.data.algorithm.TrendingAlgorithm
 import com.OPEN.OU.data.algorithm.UserFameAlgorithm
 import com.OPEN.OU.data.model.Comment
@@ -304,9 +305,17 @@ class PostRepository(
 
         // فرق وزن التفاعل بين الحالة القديمة والجديدة — يُستخدم لتحديث "شهرة"
         // صاحب الفقرة (رصيد تراكمي مدى الحياة، راجع UserFameAlgorithm).
-        val oldWeight = reactionWeight(currentType)
-        val newWeight = reactionWeight(newType)
-        val delta = (newWeight - oldWeight).toLong()
+        val oldNativeType = when (currentType) {
+            ReactionType.LIKE -> 1
+            ReactionType.DISLIKE -> 2
+            ReactionType.NONE -> 0
+        }
+        val newNativeType = when (newType) {
+            ReactionType.LIKE -> 1
+            ReactionType.DISLIKE -> 2
+            ReactionType.NONE -> 0
+        }
+        val delta = NativeBridge.reactionDelta(oldNativeType, newNativeType)
         if (delta != 0L) bumpAuthorFame(postId, delta)
     }
 
