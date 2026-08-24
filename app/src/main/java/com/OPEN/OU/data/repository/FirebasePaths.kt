@@ -26,4 +26,8 @@ object FirebasePaths {
     const val BLOCKS = "blocks"
     /** /blockedBy/{uid}/{blockerUid} -> true  (فهرس معكوس: من حظر uid) — لتصفية الظهور بسرعة بلا مسح شامل */
     const val BLOCKED_BY = "blockedBy"
+    /** /commentLikes/{commentId}/{uid} -> true  (من أعجبه هذا التعليق) */
+    const val COMMENT_LIKES = "commentLikes"
+    /** فهرس معكوس: /userCommentLikes/{uid}/{commentId} -> true — لعرض حالة إعجاب المستخدم الحالي فوريًا بلا طلب لكل تعليق */
+    const val USER_COMMENT_LIKES = "userCommentLikes"
 }
