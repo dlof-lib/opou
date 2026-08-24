@@ -429,6 +429,7 @@ fun ProfileScreen(
 
                 Spacer(Modifier.height(if (isLocked || posts.isEmpty()) 24.dp else 0.dp))
             }
+            }
 
             if (!isLocked && posts.isNotEmpty()) {
                 // لا نستخدم مفتاحًا مخصصًا هنا؛ بعض البيانات القديمة قد تحتوي postId فارغًا
