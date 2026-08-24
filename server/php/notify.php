@@ -16,11 +16,23 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 require_bearer_token();
 
+// قائمة مواضيع البث المسموح بها فقط — بدون هذا القيد كان أي مستخدم موثّق (وليس فقط
+// الخادم/الإدارة) يقدر يبعث إشعار بث لكل مستخدمي التطبيق دفعة واحدة (سبام/تصيّد)
+// عبر تمرير أي اسم "topic" يختاره. الإشعارات الشخصية (targetToken) غير مقيّدة بهذه
+// القائمة لأنها تصل جهازًا واحدًا فقط (تعليق/تيك/تفاعل عادي).
+const ALLOWED_BROADCAST_TOPICS = ['opou_new_paragraphs'];
+
 $input = json_decode(file_get_contents('php://input'), true);
 $targetToken = $input['targetToken'] ?? null;
 $topic = $input['topic'] ?? null;
-$title = $input['title'] ?? 'OPOU';
-$body = $input['body'] ?? '';
+
+if ($topic !== null && !in_array($topic, ALLOWED_BROADCAST_TOPICS, true)) {
+    json_response(['error' => 'موضوع بث غير مسموح به'], 403);
+}
+
+// حدّ أقصى معقول لطول العنوان/النص يمنع حمولات ضخمة أو محاولات إساءة استخدام الإشعارات
+$title = mb_substr((string) ($input['title'] ?? 'OPOU'), 0, 100);
+$body = mb_substr((string) ($input['body'] ?? ''), 0, 500);
 
 // بيانات إضافية (data payload) تُستخدم من جهة التطبيق لبناء إشعار غني
 // (نوع الإشعار، معرّف الفقرة، اسم الناشر، مقتطف من المحتوى...).
