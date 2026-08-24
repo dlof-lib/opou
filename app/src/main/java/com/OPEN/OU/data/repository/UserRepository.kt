@@ -170,13 +170,4 @@ class UserRepository(
     suspend fun touchLastSeen(uid: String) {
         usersRef.child(uid).child("lastSeenAt").setValue(System.currentTimeMillis()).await()
     }
-
-    // ===== ميزة المنشن (@اسم_المستخدم) =====
-
-    /** يحوّل اسم مستخدم (بدون @) إلى معرّفه uid عبر فهرس /usernames، أو null إن لم يوجد. */
-    suspend fun getUidByUsername(username: String): String? {
-        if (username.isBlank()) return null
-        return db.getReference(FirebasePaths.USERNAMES).child(username).get().await()
-            .getValue(String::class.java)
-    }
 }
