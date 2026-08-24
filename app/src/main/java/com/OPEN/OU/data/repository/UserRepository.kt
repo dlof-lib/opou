@@ -98,4 +98,76 @@ class UserRepository(
             usersRef.child(id).get().await().getValue(User::class.java)
         }
     }
+
+    // ===== ميزات الحساب =====
+
+    /** تعطيل الحساب مؤقتًا (يبقى تسجيل الدخول ممكنًا، لكن يُخفى المستخدم عن غيره حتى يُعاد تفعيله). */
+    suspend fun setAccountStatus(uid: String, status: String) {
+        usersRef.child(uid).child("accountStatus").setValue(status).await()
+    }
+
+    /** يفعّل التحقق بخطوتين ويخزّن بصمة PIN فقط (وليس الرمز نفسه). */
+    suspend fun enableTwoFactor(uid: String, pinHash: String) {
+        usersRef.child(uid).updateChildren(
+            mapOf("twoFactorEnabled" to true, "twoFactorPinHash" to pinHash)
+        ).await()
+    }
+
+    suspend fun disableTwoFactor(uid: String) {
+        usersRef.child(uid).updateChildren(
+            mapOf("twoFactorEnabled" to false, "twoFactorPinHash" to "")
+        ).await()
+    }
+
+    suspend fun updateCategories(uid: String, categories: List<String>) {
+        usersRef.child(uid).child("categories").setValue(categories).await()
+    }
+
+    suspend fun updateSocialLinks(uid: String, links: Map<String, String>) {
+        usersRef.child(uid).child("socialLinks").setValue(links).await()
+    }
+
+    suspend fun updateCustomButtons(uid: String, buttons: List<com.OPEN.OU.data.model.CustomButton>) {
+        usersRef.child(uid).child("customButtons").setValue(buttons).await()
+    }
+
+    /** يثبّت فقرة أعلى الغرفة (أو يلغي التثبيت إن كانت postId فارغة). */
+    suspend fun setPinnedPost(uid: String, postId: String) {
+        usersRef.child(uid).child("pinnedPostId").setValue(postId).await()
+    }
+
+    /** يحذف بيانات المستخدم نهائيًا من Realtime Database (يُستدعى مع حذف حساب المصادقة). */
+    suspend fun deleteUserDataPermanently(uid: String, username: String) {
+        usersRef.child(uid).removeValue().await()
+        if (username.isNotBlank()) {
+            db.getReference(FirebasePaths.USERNAMES).child(username).removeValue().await()
+        }
+        runCatching { db.getReference(FirebasePaths.TEKING).child(uid).removeValue().await() }
+        runCatching { db.getReference(FirebasePaths.TEKERS).child(uid).removeValue().await() }
+        runCatching { db.getReference(FirebasePaths.USER_REACTIONS).child(uid).removeValue().await() }
+        runCatching { db.getReference(FirebasePaths.BLOCKS).child(uid).removeValue().await() }
+        runCatching { db.getReference(FirebasePaths.BLOCKED_BY).child(uid).removeValue().await() }
+    }
+
+    // ===== ميزات الخصوصية =====
+
+    suspend fun updatePrivacySettings(
+        uid: String,
+        isPrivateRoom: Boolean,
+        hideLastSeen: Boolean,
+        whoCanComment: String
+    ) {
+        usersRef.child(uid).updateChildren(
+            mapOf(
+                "isPrivateRoom" to isPrivateRoom,
+                "hideLastSeen" to hideLastSeen,
+                "whoCanComment" to whoCanComment
+            )
+        ).await()
+    }
+
+    /** يحدّث وقت آخر نشاط — يُستدعى Best-effort عند فتح التطبيق، ويُعرض فقط إن لم يكن hideLastSeen مفعّلاً. */
+    suspend fun touchLastSeen(uid: String) {
+        usersRef.child(uid).child("lastSeenAt").setValue(System.currentTimeMillis()).await()
+    }
 }
