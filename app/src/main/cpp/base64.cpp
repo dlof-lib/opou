@@ -67,23 +67,30 @@ std::vector<uint8_t> base64Decode(const std::string& encoded) {
     std::vector<uint8_t> out;
     out.reserve((encoded.size() / 4) * 3 + 3);
 
-    int32_t buffer = 0;
+    // Keep only unconsumed bits to avoid signed overflow on large images.
+    uint32_t buffer = 0;
     int bits = 0;
 
-    for (const char c : encoded) {
-        if (c == '\n' || c == '\r' || c == ' ') continue; // تسامح مع فواصل الأسطر
-        const int8_t value = kDecodeTable[static_cast<uint8_t>(c)];
-        if (value == -2) break;      // نهاية عند الحشو
-        if (value == -1) continue;   // تجاهل أي رمز غير صالح بدل رمي استثناء (قوة/تسامح)
+    for (unsigned char c : encoded) {
+        if (c == '\n' || c == '\r' || c == ' ' || c == '\t') continue;
 
-        buffer = (buffer << 6) | value;
+        const int8_t value = kDecodeTable[c];
+        if (value == -2) break;
+        if (value < 0) continue;
+
+        buffer = (buffer << 6) | static_cast<uint32_t>(value);
         bits += 6;
+
         if (bits >= 8) {
             bits -= 8;
-            out.push_back(static_cast<uint8_t>((buffer >> bits) & 0xFF));
+            out.push_back(static_cast<uint8_t>((buffer >> bits) & 0xFFu));
+            if (bits == 0) {
+                buffer = 0;
+            } else {
+                buffer &= (1u << bits) - 1u;
+            }
         }
     }
-
     return out;
 }
 
