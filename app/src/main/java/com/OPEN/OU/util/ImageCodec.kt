@@ -27,15 +27,37 @@ import kotlin.math.min
  */
 object ImageCodec {
 
-    /** أنماط الاستخدام المختلفة، لكل منها حد أقصى للأبعاد وحجم الملف المستهدف. */
-    enum class ImageProfile(val maxDimension: Int, val targetBytes: Int) {
-        AVATAR(512, 180_000),      // صورة رمزية: مربعة صغيرة، جودة عالية
-        BANNER(1280, 350_000),     // بانر الغرفة: عريض
+    /**
+     * أنماط الاستخدام المختلفة. كل نمط له **مقاس مُلزم** (outputWidth × outputHeight)
+     * ونسبة عرض/ارتفاع ثابتة (aspectRatio) خاصة بمنصة أوبو — وتُطبَّق عبر أداة القص
+     * (راجع ImageCropperDialog) قبل الوصول لهذه الدالة، بحيث تخرج كل صورة بنفس
+     * المقاس والنسبة دومًا مهما كانت الصورة الأصلية. هذه المقاسات مختلفة عمدًا عن
+     * تطبيق yeex (الذي يستخدم مقاساته الخاصة):
+     *  - الصورة الرمزية: مربعة 640×640 (بدل 512×512 في yeex)
+     *  - البانر: عريض بنسبة 3:1 وحجم 1500×500 (نسبة أوسع من بانر yeex)
+     *  - صورة الفقرة: عمودية بنسبة 4:5 وحجم 1080×1350 (أسلوب "فييد" اجتماعي مخصّص لأوبو)
+     */
+    enum class ImageProfile(
+        val maxDimension: Int,
+        val targetBytes: Int,
+        /** نسبة العرض إلى الارتفاع الإلزامية لإطار القص (مثال: 1f مربع، 3f عريض 3:1). */
+        val aspectRatio: Float,
+        /** المقاس النهائي الدقيق (بالبكسل) الذي تُخرَج به الصورة دومًا بعد القص والترميز. */
+        val outputWidth: Int,
+        val outputHeight: Int
+    ) {
+        // صورة رمزية: مربعة 640×640 — إطار قص دائري في الواجهة
+        AVATAR(640, 220_000, aspectRatio = 1f, outputWidth = 640, outputHeight = 640),
+
+        // بانر الغرفة: عريض بنسبة 3:1 وحجم 1500×500 — إطار قص مستطيل عريض
+        BANNER(1500, 380_000, aspectRatio = 3f, outputWidth = 1500, outputHeight = 500),
+
+        // صورة داخل فقرة: عمودية بنسبة 4:5 (أسلوب فييد اجتماعي) وحجم 1080×1350
         // كانت القيمة سابقًا 700_000 بايت، والتي تتحوّل بعد ترميز Base64 (تضخّم ~4/3)
         // إلى ~933,000 حرف — أي أكبر بالفعل من الحد الآمن المفروض في PostRepository
         // (900,000 حرف)، ما كان يجعل رفع أي صورة فقرة كبيرة يفشل دائمًا تقريبًا.
         // خُفِّضت إلى 600_000 بايت (~800,000 حرف بعد الترميز) لتبقى دومًا ضمن الحد الآمن.
-        POST_IMAGE(1600, 600_000)  // صورة داخل فقرة: أكبر مساحة مسموحة
+        POST_IMAGE(1350, 600_000, aspectRatio = 0.8f, outputWidth = 1080, outputHeight = 1350)
     }
 
     /**
@@ -48,6 +70,9 @@ object ImageCodec {
 
     /** أصغر أبعاد مسموح بالنزول إليها أثناء إعادة المحاولة، حتى تبقى الصورة مقروءة وواضحة. */
     private const val MIN_SHRINK_DIMENSION = 320
+
+    /** أقصى أبعاد للنسخة "العاملة" المعروضة داخل أداة القص (قبل القص والترميز النهائي). */
+    private const val WORKING_MAX_DIMENSION = 2048
 
     data class EncodedImage(
         val base64: String,
@@ -120,6 +145,75 @@ object ImageCodec {
         val bytes = NativeBridge.decodeBase64(base64)
         if (bytes.isEmpty()) return null
         return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+    }
+
+    /**
+     * يحمّل من [uri] نسخة "عاملة" (working) من الصورة الأصلية — بعد تصحيح دوران EXIF
+     * وتصغيرها فقط بما يكفي لتفادي OutOfMemoryError (سقف [WORKING_MAX_DIMENSION])،
+     * دون قصّها أو ضغطها بعد — لتُعرض داخل أداة القص [ImageCropperDialog] فيختار
+     * المستخدم الإطار بنفسه. يجب استدعاؤها من خيط خلفي (Dispatchers.Default/IO).
+     * يرمي IllegalArgumentException برسالة عربية واضحة إن تعذّرت القراءة أو فك الترميز.
+     */
+    fun loadWorkingBitmap(context: Context, uri: Uri): Bitmap {
+        val bounds = readBounds(context, uri)
+            ?: throw IllegalArgumentException("تعذّر قراءة أبعاد الصورة")
+        val sampleSize = calculateSampleSize(bounds.first, bounds.second, WORKING_MAX_DIMENSION)
+        val rawBitmap = decodeSampled(context, uri, sampleSize)
+            ?: throw IllegalArgumentException("تعذّر فك ترميز الصورة، قد يكون التنسيق غير مدعوم")
+        val rotated = correctOrientation(context, uri, rawBitmap)
+        if (rotated !== rawBitmap) rawBitmap.recycle()
+        return capDimensions(rotated, WORKING_MAX_DIMENSION)
+    }
+
+    /**
+     * تُرمّز Bitmap **مقصوصة مسبقًا** (نسبتها مطابقة بالفعل لـ [profile.aspectRatio]،
+     * كالخارجة من [ImageCropperDialog]) إلى المقاس الدقيق الإلزامي للنمط
+     * (profile.outputWidth × profile.outputHeight)، ثم تضغطها وترمّزها Base64 بنفس
+     * منطق الضغط التكيّفي وشبكة الأمان المستخدمة في [encode]. يجب استدعاؤها من
+     * خيط خلفي (Dispatchers.Default). لا تُعيد تدوير (recycle) الـ [cropped] الممرّرة
+     * — مسؤولية المُستدعي.
+     */
+    fun encodeBitmap(cropped: Bitmap, profile: ImageProfile): EncodedImage {
+        var working = if (cropped.width == profile.outputWidth && cropped.height == profile.outputHeight) {
+            cropped
+        } else {
+            Bitmap.createScaledBitmap(cropped, profile.outputWidth, profile.outputHeight, true)
+        }
+        val ownsWorking = working !== cropped
+
+        var compressed = adaptiveCompress(working, profile.targetBytes)
+        var base64 = NativeBridge.encodeBase64(compressed.bytes)
+
+        // نفس شبكة الأمان الموجودة في encode(): إن لم تصل الصورة للحجم الآمن حتى بأدنى
+        // جودة، نُصغّر الأبعاد (مع الحفاظ على نفس النسبة) ونُعيد الضغط والترميز.
+        var attempts = 0
+        while (base64.length > SAFE_BASE64_CHAR_LIMIT &&
+            attempts < 4 &&
+            max(working.width, working.height) > MIN_SHRINK_DIMENSION
+        ) {
+            val nextDimension = max(
+                MIN_SHRINK_DIMENSION,
+                (max(working.width, working.height) * 0.75f).toInt()
+            )
+            val shrunk = capDimensions(working, nextDimension)
+            if (shrunk === working) break
+            if (ownsWorking || attempts > 0) working.recycle()
+            working = shrunk
+
+            compressed = adaptiveCompress(working, profile.targetBytes)
+            base64 = NativeBridge.encodeBase64(compressed.bytes)
+            attempts++
+        }
+
+        if (working !== cropped) working.recycle()
+
+        return EncodedImage(
+            base64 = base64,
+            mimeType = "image/jpeg",
+            width = compressed.width,
+            height = compressed.height,
+            byteSize = compressed.bytes.size
+        )
     }
 
     // -----------------------------------------------------------------
