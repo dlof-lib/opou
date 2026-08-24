@@ -125,8 +125,12 @@ fun FeedScreen(
                                 isOwnPost = viewModel.currentUid != null && viewModel.currentUid == post.authorId,
                                 onTogglePin = { viewModel.togglePin(post) },
                                 onBlockAuthor = { viewModel.blockAuthor(post.authorId) },
-                                onEditPost = { onEditPost(post) },
-                                onDeletePost = { viewModel.deletePost(post) }
+                                onEditPost = if (viewModel.currentUid != null && viewModel.currentUid == post.authorId) {
+                                    { onEditPost(post) }
+                                } else null,
+                                onDeletePost = if (viewModel.currentUid != null && viewModel.currentUid == post.authorId) {
+                                    { viewModel.deletePost(post) }
+                                } else null
                             )
                         }
                     }
