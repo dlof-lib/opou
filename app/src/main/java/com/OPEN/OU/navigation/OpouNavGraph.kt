@@ -1,6 +1,7 @@
 package com.OPEN.OU.navigation
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -106,7 +107,15 @@ fun OpouNavGraph() {
             val myUid = authRepo.currentUserId
             var tab by rememberSaveable { mutableStateOf(MainTab.HOME) }
 
+            // ملاحظة مهمة: هذا الـ Scaffold الخارجي (لأجل الشريط السفلي) كان يحجز
+            // مساحة شريط الحالة العلوي بشكل منفصل، وكل شاشة داخلية (الرئيسية
+            // مثلًا) لديها Scaffold خاص بها بشريط علوي يحجز نفس المساحة مرة
+            // أخرى — فينتج عن ذلك فراغ مضاعف يدفع الشريط العلوي للأسفل بشكل
+            // واضح. بما أنّ كل شاشة داخلية تتولى شريطها العلوي بنفسها، نمنع
+            // هذا الـ Scaffold من حجز أي مساحة إضافية غير ارتفاع الشريط
+            // السفلي نفسه.
             Scaffold(
+                contentWindowInsets = WindowInsets(0, 0, 0, 0),
                 bottomBar = {
                     OpouBottomBar(selected = tab, onSelect = { tab = it })
                 }
