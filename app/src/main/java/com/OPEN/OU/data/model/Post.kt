@@ -58,9 +58,33 @@ data class Post(
     val scheduledAt: Long? = null,
 
     /** فقرة مثبّتة أعلى غرفة صاحبها — راجع User.pinnedPostId (تحديث واحد يبقيهما متطابقين) */
-    val isPinned: Boolean = false
+    val isPinned: Boolean = false,
+
+    // ===== "الرد بفقرة" — نشر فقرة جديدة اقتباسًا عن تعليق (راجع CommentsSheet.onQuoteAsParagraph) =====
+    /** معرّف التعليق المقتبَس، فارغ إن لم تكن هذه الفقرة ردًا على تعليق */
+    val replyCommentId: String = "",
+    /** معرّف صاحب التعليق المقتبَس */
+    val replyCommentAuthorId: String = "",
+    /** اسم صاحب التعليق المقتبَس (يُعرض كبطاقة اقتباس أعلى الفقرة) */
+    val replyCommentAuthorUsername: String = "",
+    /** نص التعليق المقتبَس وقت الاقتباس (نسخة ثابتة، لا تتغيّر إن عُدِّل التعليق الأصلي لاحقًا) */
+    val replyCommentContent: String = "",
+
+    // ===== سلسلة الفقرات (Thread) — فقرات مرتبطة بالترتيب يكتبها نفس المستخدم كموضوع واحد متسلسل =====
+    /** معرّف السلسلة — يساوي postId أول فقرة في السلسلة. فارغ = هذه الفقرة ليست جزءًا من أي سلسلة. */
+    val threadId: String = "",
+    /** معرّف الفقرة السابقة مباشرة في نفس السلسلة، فارغة إن كانت هذه أول فقرة في السلسلة */
+    val threadPreviousPostId: String = "",
+    /** ترتيب هذه الفقرة داخل السلسلة، بدءًا من 1 لأول فقرة */
+    val threadPosition: Int = 0
 ) {
     /** هل الفقرة لا تزال بانتظار موعد نشرها المجدول؟ */
     fun isScheduledForFuture(nowMillis: Long = System.currentTimeMillis()): Boolean =
         scheduledAt != null && scheduledAt > nowMillis
+
+    /** هل هذه الفقرة جزء من سلسلة فقرات؟ */
+    val isThreadPost: Boolean get() = threadId.isNotBlank()
+
+    /** هل هذه أول فقرة في سلسلتها (رأس السلسلة)؟ */
+    val isThreadStart: Boolean get() = isThreadPost && threadPreviousPostId.isBlank()
 }
