@@ -30,9 +30,7 @@ fun FeedScreen(
     onOpenProfile: (String) -> Unit,
     onOpenComments: (Post) -> Unit,
     onCreatePost: () -> Unit,
-    onEditPost: (Post) -> Unit = {},
-    onOpenThread: (String) -> Unit = {},
-    onContinueThread: (Post) -> Unit = {}
+    onEditPost: (Post) -> Unit = {}
 ) {
     var tab by remember { mutableStateOf(0) }
     val feed by viewModel.feed.collectAsState()
@@ -102,7 +100,6 @@ fun FeedScreen(
                 val list = if (tab == 0) feed else shaabiyat
 
                 if (isLoading && list.isEmpty()) {
-                    // أول تحميل فقط: هيكل مؤقت بنفس تخطيط البطاقات الحقيقية بدل شاشة فارغة أو مؤشر دوّار مجرّد
                     LazyColumn(Modifier.fillMaxSize()) {
                         item { FeedSkeletonList() }
                     }
@@ -127,16 +124,8 @@ fun FeedScreen(
                                 isOwnPost = viewModel.currentUid != null && viewModel.currentUid == post.authorId,
                                 onTogglePin = { viewModel.togglePin(post) },
                                 onBlockAuthor = { viewModel.blockAuthor(post.authorId) },
-                                onEditPost = if (viewModel.currentUid != null && viewModel.currentUid == post.authorId) {
-                                    { onEditPost(post) }
-                                } else null,
-                                onDeletePost = if (viewModel.currentUid != null && viewModel.currentUid == post.authorId) {
-                                    { viewModel.deletePost(post) }
-                                } else null,
-                                onOpenThread = if (post.isThreadPost) onOpenThread else null,
-                                onContinueThread = if (viewModel.currentUid != null && viewModel.currentUid == post.authorId) {
-                                    { onContinueThread(post) }
-                                } else null
+                                onEditPost = { onEditPost(post) },
+                                onDeletePost = { viewModel.deletePost(post) }
                             )
                         }
                     }
