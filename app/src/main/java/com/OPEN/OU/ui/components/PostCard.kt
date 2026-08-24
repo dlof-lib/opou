@@ -6,16 +6,22 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -59,7 +65,10 @@ fun PostCard(
     onComment: () -> Unit,
     onTek: () -> Unit,
     onOpenProfile: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isOwnPost: Boolean = false,
+    onTogglePin: ((Boolean) -> Unit)? = null,
+    onBlockAuthor: (() -> Unit)? = null
 ) {
     val customBackground = post.backgroundColor.toColorOrNull()
 
@@ -129,6 +138,31 @@ fun PostCard(
                         }
                         Spacer(Modifier.height(2.dp))
                         MetaLine(post)
+                    }
+
+                    if (onTogglePin != null || onBlockAuthor != null) {
+                        var menuExpanded by remember { mutableStateOf(false) }
+                        Box {
+                            IconButton(onClick = { menuExpanded = true }) {
+                                Icon(Icons.Filled.MoreVert, contentDescription = "خيارات", modifier = Modifier.size(18.dp))
+                            }
+                            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                                if (isOwnPost && onTogglePin != null) {
+                                    DropdownMenuItem(
+                                        text = { Text(if (post.isPinned) "إلغاء التثبيت" else "تثبيت الفقرة") },
+                                        leadingIcon = { Icon(Icons.Filled.PushPin, contentDescription = null) },
+                                        onClick = { menuExpanded = false; onTogglePin(!post.isPinned) }
+                                    )
+                                }
+                                if (!isOwnPost && onBlockAuthor != null) {
+                                    DropdownMenuItem(
+                                        text = { Text("حظر ${post.authorUsername}") },
+                                        leadingIcon = { Icon(Icons.Filled.Block, contentDescription = null) },
+                                        onClick = { menuExpanded = false; onBlockAuthor() }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -230,6 +264,15 @@ private fun formatTime(millis: Long): String =
 private fun MetaLine(post: Post) {
     val privacy = ParagraphPrivacy.fromValue(post.privacy)
     Row(verticalAlignment = Alignment.CenterVertically) {
+        if (post.isPinned) {
+            Icon(
+                Icons.Filled.PushPin,
+                contentDescription = "مثبّتة",
+                tint = OpouAccentGreen,
+                modifier = Modifier.size(11.dp)
+            )
+            Spacer(Modifier.width(3.dp))
+        }
         Text(
             text = formatTime(post.createdAt),
             style = MaterialTheme.typography.labelSmall,
