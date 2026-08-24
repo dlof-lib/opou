@@ -1,6 +1,7 @@
 package com.OPEN.OU.data.repository
 
 import com.OPEN.OU.data.model.User
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.tasks.await
@@ -11,6 +12,7 @@ class AuthRepository(
     private val db: FirebaseDatabase = FirebaseDatabase.getInstance()
 ) {
     val currentUserId: String? get() = auth.currentUser?.uid
+    val currentUserEmail: String? get() = auth.currentUser?.email
 
     suspend fun login(email: String, password: String): Result<String> = try {
         val result = auth.signInWithEmailAndPassword(email, password).await()
@@ -48,4 +50,42 @@ class AuthRepository(
     }
 
     fun logout() = auth.signOut()
+
+    /** إعادة التوثيق بكلمة المرور الحالية — مطلوبة قبل عمليات حسّاسة (تغيير كلمة المرور/حذف الحساب)
+     * لأن Firebase Auth يرفضها إن لم يكن تسجيل الدخول "حديثًا". */
+    suspend fun reauthenticate(password: String): Result<Unit> = try {
+        val user = auth.currentUser ?: return Result.failure(IllegalStateException("لا يوجد مستخدم مسجّل دخول"))
+        val email = user.email ?: return Result.failure(IllegalStateException("لا يوجد بريد مرتبط بالحساب"))
+        val credential = EmailAuthProvider.getCredential(email, password)
+        user.reauthenticate(credential).await()
+        Result.success(Unit)
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    /** تغيير كلمة المرور — يعيد التوثيق تلقائيًا أولًا بكلمة المرور الحالية. */
+    suspend fun changePassword(currentPassword: String, newPassword: String): Result<Unit> = try {
+        val reauth = reauthenticate(currentPassword)
+        if (reauth.isFailure) {
+            Result.failure(reauth.exceptionOrNull() ?: IllegalStateException("تعذّر التحقق من كلمة المرور الحالية"))
+        } else {
+            auth.currentUser?.updatePassword(newPassword)?.await()
+            Result.success(Unit)
+        }
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    /** يحذف حساب المصادقة نفسه نهائيًا (بعد إعادة التوثيق). حذف بيانات Realtime Database يتم بشكل منفصل. */
+    suspend fun deleteAuthAccount(currentPassword: String): Result<Unit> = try {
+        val reauth = reauthenticate(currentPassword)
+        if (reauth.isFailure) {
+            Result.failure(reauth.exceptionOrNull() ?: IllegalStateException("تعذّر التحقق من كلمة المرور الحالية"))
+        } else {
+            auth.currentUser?.delete()?.await()
+            Result.success(Unit)
+        }
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
 }
