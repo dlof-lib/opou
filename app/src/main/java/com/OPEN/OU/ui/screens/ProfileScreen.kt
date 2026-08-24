@@ -4,10 +4,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.CheckCircle
@@ -156,11 +158,17 @@ fun ProfileScreen(
         val isLocked = user.isPrivateRoom && !isOwnProfile && !isTeking
 
         ResponsiveContent(modifier = Modifier.padding(padding)) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+        // LazyColumn مهم جدًا هنا: الملف الشخصي قد يحتوي عشرات الفقرات،
+        // وكل فقرة قد تحتوي صورة Base64 كبيرة. استخدام Column+verticalScroll
+        // كان يكوّن كل البطاقات والصور دفعة واحدة، ما قد يؤدي إلى OOM وإغلاق
+        // التطبيق فور فتح الحساب على الأجهزة ذات الذاكرة المحدودة.
+        val profileListState = rememberLazyListState()
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            state = profileListState,
+            contentPadding = PaddingValues(bottom = 24.dp)
         ) {
+            item(key = "profile-header") {
             // ── البانر ─────────────────────────────────────────────────────
             val hasBannerImage = user.bannerBase64.isNotBlank() || user.bannerUrl.isNotBlank()
             Box(
@@ -422,8 +430,10 @@ fun ProfileScreen(
                 Spacer(Modifier.height(if (isLocked || posts.isEmpty()) 24.dp else 0.dp))
             }
 
-            if (!isLocked) {
-                posts.forEach { post ->
+            if (!isLocked && posts.isNotEmpty()) {
+                // لا نستخدم مفتاحًا مخصصًا هنا؛ بعض البيانات القديمة قد تحتوي postId فارغًا
+                // أو متكررًا، ومفتاح LazyColumn مكرر يسبب IllegalArgumentException.
+                items(posts) { post ->
                     PostCard(
                         post = post,
                         currentReaction = ReactionType.NONE,
