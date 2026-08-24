@@ -192,6 +192,37 @@ class PostRepository(
     }
 
     /**
+     * يحضّر معلومات ربط فقرة جديدة كمتابعة لسلسلة انطلاقًا من [anchorPost] (آخر فقرة يختار
+     * المستخدم المتابعة بعدها). إن لم تكن [anchorPost] جزءًا من أي سلسلة بعد، يحوّلها هذا
+     * الاستدعاء إلى رأس سلسلة جديدة (threadId = معرّفها هي نفسها) قبل إرجاع بيانات الفقرة التالية.
+     * يُعيد Triple(threadId, previousPostId, nextPosition) لاستخدامها عند بناء الفقرة الجديدة.
+     */
+    suspend fun continueThread(anchorPost: Post): Triple<String, String, Int> {
+        if (anchorPost.threadId.isBlank()) {
+            postsRef.child(anchorPost.postId).updateChildren(
+                mapOf("threadId" to anchorPost.postId, "threadPosition" to 1)
+            ).await()
+            return Triple(anchorPost.postId, anchorPost.postId, 2)
+        }
+        return Triple(anchorPost.threadId, anchorPost.postId, anchorPost.threadPosition + 1)
+    }
+
+    /** يستمع فوريًا (Realtime) لكل فقرات سلسلة معيّنة، مرتّبة حسب موضعها في السلسلة (الأقدم أولًا). */
+    fun observeThread(threadId: String): Flow<List<Post>> = callbackFlow {
+        val query: Query = postsRef.orderByChild("threadId").equalTo(threadId)
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val list = snapshot.children.mapNotNull { it.getValue(Post::class.java) }
+                    .sortedBy { it.threadPosition }
+                trySend(list)
+            }
+            override fun onCancelled(error: DatabaseError) { close(error.toException()) }
+        }
+        query.addValueEventListener(listener)
+        awaitClose { query.removeEventListener(listener) }
+    }
+
+    /**
      * يطبّق قواعد خصوصية الفقرة (PUBLIC/PRIVATE/LIMITED/CUSTOM)، حالة الجدولة (scheduledAt)،
      * والحظر المتبادل [mutedIds] لتحديد ما إذا كانت فقرة معينة يجب أن تظهر لمستخدم زائر بعينه.
      * الفقرات المجدولة لموعد مستقبلي لا تظهر إلا لصاحبها (كمعاينة).
