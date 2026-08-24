@@ -54,11 +54,20 @@ private object Routes {
 private enum class MainTab { HOME, TEKERS, ACCOUNT }
 
 @Composable
-fun OpouNavGraph() {
+fun OpouNavGraph(
+    pendingShortcutAction: String? = null,
+    onShortcutConsumed: () -> Unit = {}
+) {
     val navController = rememberNavController()
     val authRepo = remember { AuthRepository() }
     val userRepo = remember { UserRepository() }
     val startDestination = if (authRepo.currentUserId != null) Routes.MAIN else Routes.LOGIN
+
+    // التبويب الأولي لشاشة MAIN — تُغيَّر قيمته عند تفعيل اختصار "التيكرز" أو
+    // "غرفتي" (راجع LaunchedEffect أدناه)، وتُستخدم كمفتاح تصفير لحالة `tab`
+    // المحفوظة (rememberSaveable) داخل composable(Routes.MAIN) لإجبارها على
+    // اعتماد التبويب المطلوب فورًا.
+    var initialMainTab by remember { mutableStateOf(MainTab.HOME) }
 
     // بيانات المستخدم الحالي الحقيقية، تُقرأ فوريًا (Realtime) من /users/{uid}
     var currentUsername by remember { mutableStateOf("") }
@@ -74,6 +83,28 @@ fun OpouNavGraph() {
                 currentAvatarBase64 = user.avatarBase64
             }
         }
+    }
+
+    // معالجة اختصارات التطبيق الثابتة (راجع res/xml/shortcuts.xml وMainActivity):
+    // تُطبَّق فقط إن كان المستخدم مسجّلاً دخوله بالفعل (المطلوب لإتاحة أي من
+    // الشاشات الثلاث). تُستهلك مرة واحدة عبر onShortcutConsumed حتى لا تُعاد
+    // معالجتها عند أي إعادة تركيب لاحقة لا علاقة لها بضغطة اختصار جديدة.
+    LaunchedEffect(pendingShortcutAction, authRepo.currentUserId) {
+        val uid = authRepo.currentUserId
+        val action = pendingShortcutAction
+        if (uid == null || action == null) return@LaunchedEffect
+        when (action) {
+            "new_post" -> navController.navigate(Routes.CREATE_POST)
+            "tekers" -> {
+                initialMainTab = MainTab.TEKERS
+                navController.popBackStack(Routes.MAIN, inclusive = false)
+            }
+            "account" -> {
+                initialMainTab = MainTab.ACCOUNT
+                navController.popBackStack(Routes.MAIN, inclusive = false)
+            }
+        }
+        onShortcutConsumed()
     }
 
     var activeCommentsPost by remember { mutableStateOf<Post?>(null) }
@@ -111,7 +142,7 @@ fun OpouNavGraph() {
 
         composable(Routes.MAIN) {
             val myUid = authRepo.currentUserId
-            var tab by rememberSaveable { mutableStateOf(MainTab.HOME) }
+            var tab by rememberSaveable(initialMainTab) { mutableStateOf(initialMainTab) }
 
             Scaffold(
                 bottomBar = {
