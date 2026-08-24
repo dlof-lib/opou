@@ -53,7 +53,12 @@ private object Routes {
 private enum class MainTab { HOME, TEKERS, ACCOUNT }
 
 @Composable
-fun OpouNavGraph() {
+fun OpouNavGraph(
+    /** اختصار التطبيق الذي فُتح منه التطبيق (إن وُجد) — راجع [com.OPEN.OU.EXTRA_SHORTCUT_ACTION]. */
+    pendingShortcutAction: String? = null,
+    /** يُستدعى بعد معالجة اختصار التطبيق لمنع إعادة معالجته عند إعادة التركيب (recomposition). */
+    onShortcutConsumed: () -> Unit = {}
+) {
     val navController = rememberNavController()
     val authRepo = remember { AuthRepository() }
     val userRepo = remember { UserRepository() }
@@ -76,6 +81,30 @@ fun OpouNavGraph() {
     }
 
     var activeCommentsPost by remember { mutableStateOf<Post?>(null) }
+    /** الفقرة قيد التعديل حاليًا (إن وُجدت) — تُمرَّر لشاشة CreatePostScreen في وضع "تعديل". */
+    var editingPost by remember { mutableStateOf<Post?>(null) }
+    // تبويب الشاشة الرئيسية مرفوع هنا (بدل داخل composable(MAIN)) بحيث يمكن لاختصارات
+    // التطبيق ("تيكرز"/"حساب") تغييره من الخارج دون الحاجة لإعادة إنشاء الشاشة الرئيسية.
+    var mainTab by rememberSaveable { mutableStateOf(MainTab.HOME) }
+
+    // يعالج اختصار التطبيق الذي فُتح منه التطبيق (إن وُجد) بعد تسجيل الدخول فقط،
+    // ثم يُبلّغ MainActivity باستهلاكه لمنع إعادة تنفيذه عند أي إعادة تركيب لاحقة.
+    LaunchedEffect(pendingShortcutAction, authRepo.currentUserId) {
+        val action = pendingShortcutAction ?: return@LaunchedEffect
+        if (authRepo.currentUserId == null) return@LaunchedEffect
+        when (action) {
+            "new_post" -> navController.navigate(Routes.CREATE_POST)
+            "tekers" -> {
+                mainTab = MainTab.TEKERS
+                navController.navigate(Routes.MAIN) { launchSingleTop = true; popUpTo(Routes.MAIN) }
+            }
+            "account" -> {
+                mainTab = MainTab.ACCOUNT
+                navController.navigate(Routes.MAIN) { launchSingleTop = true; popUpTo(Routes.MAIN) }
+            }
+        }
+        onShortcutConsumed()
+    }
 
     NavHost(navController = navController, startDestination = startDestination) {
 
@@ -107,15 +136,14 @@ fun OpouNavGraph() {
 
         composable(Routes.MAIN) {
             val myUid = authRepo.currentUserId
-            var tab by rememberSaveable { mutableStateOf(MainTab.HOME) }
 
             Scaffold(
                 bottomBar = {
-                    OpouBottomBar(selected = tab, onSelect = { tab = it })
+                    OpouBottomBar(selected = mainTab, onSelect = { mainTab = it })
                 }
             ) { padding ->
                 Box(Modifier.padding(padding).fillMaxSize()) {
-                    when (tab) {
+                    when (mainTab) {
                         MainTab.HOME -> {
                             val vm: FeedViewModel = viewModel()
                             FeedScreen(
@@ -125,7 +153,8 @@ fun OpouNavGraph() {
                                 currentAvatarBase64 = currentAvatarBase64,
                                 onOpenProfile = { uid -> navController.navigate(Routes.profile(uid)) },
                                 onOpenComments = { post -> activeCommentsPost = post },
-                                onCreatePost = { navController.navigate(Routes.CREATE_POST) }
+                                onCreatePost = { navController.navigate(Routes.CREATE_POST) },
+                                onEditPost = { post -> editingPost = post; navController.navigate(Routes.CREATE_POST) }
                             )
 
                             activeCommentsPost?.let { post ->
@@ -175,8 +204,9 @@ fun OpouNavGraph() {
                 currentUsername = currentUsername,
                 currentAvatar = currentAvatar,
                 currentAvatarBase64 = currentAvatarBase64,
-                onDone = { navController.popBackStack() },
-                onBack = { navController.popBackStack() }
+                onDone = { editingPost = null; navController.popBackStack() },
+                onBack = { editingPost = null; navController.popBackStack() },
+                editingPost = editingPost
             )
         }
 
