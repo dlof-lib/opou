@@ -12,6 +12,7 @@ import com.google.firebase.database.Query
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.tasks.await
 
 /** يدير "الفقرات" (المنشورات) مع حرية التعبير الكاملة: نص مفتوح بدون قيود على المحتوى. */
@@ -135,6 +136,10 @@ class PostRepository(
         }
         query.addValueEventListener(listener)
         awaitClose { query.removeEventListener(listener) }
+    }.catch {
+        // مثال: صلاحيات Firebase مرفوضة أو انقطاع اتصال. بدون هذا كان الخطأ يتسرّب من
+        // الـ Flow ويُسقط التطبيق فور فتح الشاشة الرئيسية.
+        emit(emptyList())
     }
 
     /** تبويب "الشعبيات": الأعلى نقاط شعبية، مع نفس قواعد الخصوصية/الجدولة/الحظر */
@@ -156,7 +161,7 @@ class PostRepository(
         }
         query.addValueEventListener(listener)
         awaitClose { query.removeEventListener(listener) }
-    }
+    }.catch { emit(emptyList()) }
 
     /**
      * فقرات غرفة مستخدم واحد فقط (للعرض في ProfileScreen)، مع الفقرة المثبّتة أولًا
@@ -180,6 +185,9 @@ class PostRepository(
         }
         query.addValueEventListener(listener)
         awaitClose { query.removeEventListener(listener) }
+    }.catch {
+        // بدون هذا كان أي خطأ Firebase (صلاحيات مثلاً) يُسقط التطبيق فور فتح "الحساب".
+        emit(emptyList())
     }
 
     /** يثبّت/يلغي تثبيت فقرة في غرفتها. يلغي أي تثبيت سابق لنفس المستخدم تلقائيًا (تثبيت واحد كحد أقصى). */
@@ -220,7 +228,7 @@ class PostRepository(
         }
         query.addValueEventListener(listener)
         awaitClose { query.removeEventListener(listener) }
-    }
+    }.catch { emit(emptyList()) }
 
     /**
      * يطبّق قواعد خصوصية الفقرة (PUBLIC/PRIVATE/LIMITED/CUSTOM)، حالة الجدولة (scheduledAt)،
@@ -304,7 +312,7 @@ class PostRepository(
         }
         ref.addValueEventListener(listener)
         awaitClose { ref.removeEventListener(listener) }
-    }
+    }.catch { emit(emptyMap()) }
 
     private suspend fun adjustCount(postId: String, field: String, delta: Int) {
         postsRef.child(postId).child(field).setValue(ServerValue.increment(delta.toLong())).await()
@@ -338,6 +346,9 @@ class PostRepository(
         }
         ref.addValueEventListener(listener)
         awaitClose { ref.removeEventListener(listener) }
+    }.catch {
+        // بدون هذا كان أي خطأ Firebase يُسقط التطبيق فور فتح ورقة التعليقات.
+        emit(emptyList())
     }
 
     /** يحذف تعليقًا نهائيًا (يُستدعى من صاحب التعليق أو صاحب الفقرة — التحقق من الصلاحية يتم في الواجهة). */
@@ -374,5 +385,5 @@ class PostRepository(
         }
         ref.addValueEventListener(listener)
         awaitClose { ref.removeEventListener(listener) }
-    }
+    }.catch { emit(emptySet()) }
 }
