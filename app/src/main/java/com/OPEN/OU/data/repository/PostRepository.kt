@@ -1,8 +1,11 @@
 package com.OPEN.OU.data.repository
 
+import com.OPEN.OU.data.algorithm.TrendingAlgorithm
+import com.OPEN.OU.data.algorithm.UserFameAlgorithm
 import com.OPEN.OU.data.model.Comment
 import com.OPEN.OU.data.model.Post
 import com.OPEN.OU.data.model.ReactionType
+import com.OPEN.OU.data.model.User
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ServerValue
 import com.google.firebase.database.ValueEventListener
@@ -42,7 +45,11 @@ class PostRepository(
         }
         val newRef = postsRef.push()
         val postId = newRef.key.orEmpty()
-        newRef.setValue(post.copy(postId = postId)).await()
+        // نحسب نقاط الشعبية الأولية فورًا (تعتمد على وقت النشر فقط بما أن
+        // التفاعل صفر) — بدون هذا تبقى الفقرة عند 0 ولا تظهر مطلقًا في
+        // تبويب "الشعبيات" حتى يتفاعل معها أحد لأول مرة.
+        val initialScore = TrendingAlgorithm.computeScore(post.copy(postId = postId))
+        newRef.setValue(post.copy(postId = postId, shaabiyaScore = initialScore)).await()
         usersRef.child(post.authorId).child("paragraphsCount")
             .setValue(ServerValue.increment(1)).await()
         return postId
@@ -90,9 +97,15 @@ class PostRepository(
             originalAuthorId = original.authorId,
             originalAuthorUsername = original.authorUsername
         )
-        newRef.setValue(tekPost).await()
+        val initialScore = TrendingAlgorithm.computeScore(tekPost)
+        newRef.setValue(tekPost.copy(shaabiyaScore = initialScore)).await()
         postsRef.child(original.postId).child("teksCount")
             .setValue(ServerValue.increment(1)).await()
+        // كان هذا مفقودًا سابقًا: التيك (إعادة النشر) كان يزيد teksCount لكن لا
+        // يُعيد حساب shaabiyaScore للفقرة الأصلية إلا إن حدث تفاعل آخر عليها لاحقًا،
+        // فكانت الفقرات المُعاد نشرها بكثرة لا تصعد في "الشعبيات" فورًا رغم انتشارها الفعلي.
+        recomputeShaabiya(original.postId)
+        bumpAuthorFame(original.postId, TrendingAlgorithm.WEIGHT_TEK.toLong())
         return postId
     }
 
@@ -288,6 +301,19 @@ class PostRepository(
         }
 
         recomputeShaabiya(postId)
+
+        // فرق وزن التفاعل بين الحالة القديمة والجديدة — يُستخدم لتحديث "شهرة"
+        // صاحب الفقرة (رصيد تراكمي مدى الحياة، راجع UserFameAlgorithm).
+        val oldWeight = reactionWeight(currentType)
+        val newWeight = reactionWeight(newType)
+        val delta = (newWeight - oldWeight).toLong()
+        if (delta != 0L) bumpAuthorFame(postId, delta)
+    }
+
+    private fun reactionWeight(type: ReactionType): Int = when (type) {
+        ReactionType.LIKE -> TrendingAlgorithm.WEIGHT_LIKE
+        ReactionType.DISLIKE -> -TrendingAlgorithm.WEIGHT_DISLIKE
+        ReactionType.NONE -> 0
     }
 
     /**
@@ -318,12 +344,38 @@ class PostRepository(
         postsRef.child(postId).child(field).setValue(ServerValue.increment(delta.toLong())).await()
     }
 
-    /** نقاط الشعبية = (الإعجابات × 3) + (التيكات × 5) + التعليقات - عدم الإعجاب */
+    /**
+     * يعيد حساب نقاط الشعبية عبر [TrendingAlgorithm] (Hot Ranking بتخميد زمني
+     * لوغاريتمي — راجع توثيق الخوارزمية هناك للتفاصيل والمبرر).
+     */
     private suspend fun recomputeShaabiya(postId: String) {
         val snapshot = postsRef.child(postId).get().await()
         val post = snapshot.getValue(Post::class.java) ?: return
-        val score = (post.likesCount * 3L) + (post.teksCount * 5L) + post.commentsCount - post.dislikesCount
+        val score = TrendingAlgorithm.computeScore(post)
         postsRef.child(postId).child("shaabiyaScore").setValue(score).await()
+    }
+
+    /**
+     * يضيف [engagementDelta] إلى رصيد "شهرة" صاحب الفقرة [postId] التراكمي
+     * (User.totalEngagementScore)، ثم يعيد حساب User.shaabiyaScore عبر
+     * [UserFameAlgorithm]. يُستدعى من كل نقطة تفاعل تخصّ الفقرات (تفاعل ⭐/💔،
+     * تعليق، تيك) — راجع توثيق UserFameAlgorithm لتفسير الفرق بين هذا الرصيد
+     * التراكمي الذي لا يتخامد أبدًا وبين shaabiyaScore الفقرة الواحدة المتخامد.
+     */
+    private suspend fun bumpAuthorFame(postId: String, engagementDelta: Long) {
+        val authorId = postsRef.child(postId).child("authorId").get().await()
+            .getValue(String::class.java) ?: return
+        usersRef.child(authorId).child("totalEngagementScore")
+            .setValue(ServerValue.increment(engagementDelta)).await()
+        recomputeUserFame(authorId)
+    }
+
+    /** يعيد حساب User.shaabiyaScore (شهرة "مدى الحياة") عبر [UserFameAlgorithm]. */
+    private suspend fun recomputeUserFame(uid: String) {
+        val snapshot = usersRef.child(uid).get().await()
+        val user = snapshot.getValue(User::class.java) ?: return
+        val score = UserFameAlgorithm.computeScore(user)
+        usersRef.child(uid).child("shaabiyaScore").setValue(score).await()
     }
 
     suspend fun addComment(comment: Comment): String {
@@ -332,6 +384,7 @@ class PostRepository(
         newRef.setValue(comment.copy(commentId = commentId)).await()
         adjustCount(comment.postId, "commentsCount", 1)
         recomputeShaabiya(comment.postId)
+        bumpAuthorFame(comment.postId, TrendingAlgorithm.WEIGHT_COMMENT.toLong())
         return commentId
     }
 
@@ -356,6 +409,7 @@ class PostRepository(
         commentsRef.child(postId).child(commentId).removeValue().await()
         adjustCount(postId, "commentsCount", -1)
         recomputeShaabiya(postId)
+        bumpAuthorFame(postId, -TrendingAlgorithm.WEIGHT_COMMENT.toLong())
     }
 
     /** إعجاب/إلغاء إعجاب ⭐ بتعليق — يمنع الازدواجية عبر فهرس /commentLikes مع فهرس معكوس لعرض حالة المستخدم فوريًا. */
