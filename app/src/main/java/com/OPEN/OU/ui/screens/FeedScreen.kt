@@ -28,7 +28,8 @@ fun FeedScreen(
     currentAvatarBase64: String = "",
     onOpenProfile: (String) -> Unit,
     onOpenComments: (Post) -> Unit,
-    onCreatePost: () -> Unit
+    onCreatePost: () -> Unit,
+    onEditPost: (Post) -> Unit = {}
 ) {
     var tab by remember { mutableStateOf(0) }
     val feed by viewModel.feed.collectAsState()
@@ -116,7 +117,9 @@ fun FeedScreen(
                                 onOpenProfile = onOpenProfile,
                                 isOwnPost = viewModel.currentUid != null && viewModel.currentUid == post.authorId,
                                 onTogglePin = { viewModel.togglePin(post) },
-                                onBlockAuthor = { viewModel.blockAuthor(post.authorId) }
+                                onBlockAuthor = { viewModel.blockAuthor(post.authorId) },
+                                onEditPost = { onEditPost(post) },
+                                onDeletePost = { viewModel.deletePost(post) }
                             )
                         }
                     }
