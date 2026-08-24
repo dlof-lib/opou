@@ -1,6 +1,7 @@
 package com.OPEN.OU.data.repository
 
 import com.OPEN.OU.data.model.User
+import com.OPEN.OU.util.TwoFactorGate
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
@@ -49,7 +50,12 @@ class AuthRepository(
         Result.failure(e)
     }
 
-    fun logout() = auth.signOut()
+    fun logout() {
+        // نمسح حالة "اجتاز PIN" الخاصة بهذا المستخدم حتى لا يُعفى تلقائيًا من خطوة
+        // التحقق بخطوتين عند تسجيل دخول لاحق (نفسه أو لمستخدم آخر على نفس الجهاز).
+        auth.currentUser?.uid?.let { TwoFactorGate.clear(it) }
+        auth.signOut()
+    }
 
     /** إعادة التوثيق بكلمة المرور الحالية — مطلوبة قبل عمليات حسّاسة (تغيير كلمة المرور/حذف الحساب)
      * لأن Firebase Auth يرفضها إن لم يكن تسجيل الدخول "حديثًا". */
