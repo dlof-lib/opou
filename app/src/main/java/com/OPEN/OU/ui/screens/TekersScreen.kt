@@ -22,9 +22,9 @@ import coil.compose.AsyncImage
 import com.OPEN.OU.R
 import com.OPEN.OU.data.model.User
 import com.OPEN.OU.ui.components.Base64Image
+import com.OPEN.OU.ui.components.TekersSkeletonList
 import com.OPEN.OU.ui.components.GradientText
 import com.OPEN.OU.ui.components.ResponsiveContent
-import com.OPEN.OU.ui.components.TekersSkeletonList
 
 /**
  * شاشة "التيكرز" — تعرض في تبويبين: من يتابعك (متابعوك) ومن تتابعهم (تتابعهم).
