@@ -9,5 +9,16 @@ data class Comment(
     // صورة رمزية مخزّنة كـ Base64 (نفس نمط Post/User) — تُستخدم أولًا إن وُجدت
     val authorAvatarBase64: String = "",
     val content: String = "",
-    val createdAt: Long = System.currentTimeMillis()
-)
+    val createdAt: Long = System.currentTimeMillis(),
+
+    // عدد الإعجابات على التعليق (⭐)
+    val likesCount: Int = 0,
+
+    // ===== الرد على تعليق (خيط تعليقات بمستوى واحد) =====
+    /** معرّف التعليق الأب إن كان هذا التعليق ردًا على تعليق آخر، فارغ إن لم يكن ردًا */
+    val parentCommentId: String = "",
+    /** اسم صاحب التعليق الذي تم الرد عليه (يُعرض كـ "ردًا على @اسم") */
+    val replyToUsername: String = ""
+) {
+    val isReply: Boolean get() = parentCommentId.isNotBlank()
+}
