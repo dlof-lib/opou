@@ -2,6 +2,7 @@ package com.OPEN.OU.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -40,6 +41,7 @@ import com.OPEN.OU.data.repository.AuthRepository
 import com.OPEN.OU.ui.components.Base64Image
 import com.OPEN.OU.ui.components.GradientText
 import com.OPEN.OU.ui.components.ImagePickerButton
+import com.OPEN.OU.ui.components.ImageViewerDialog
 import com.OPEN.OU.ui.components.PostCard
 import com.OPEN.OU.ui.components.ResponsiveContent
 import com.OPEN.OU.ui.theme.OpouAccentGreen
@@ -72,6 +74,8 @@ fun ProfileScreen(
     var avatarError by remember { mutableStateOf<String?>(null) }
     var showMoreMenu by remember { mutableStateOf(false) }
     var showBlockConfirm by remember { mutableStateOf(false) }
+    var showAvatarViewer by remember { mutableStateOf(false) }
+    var showBannerViewer by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val uriHandler = LocalUriHandler.current
 
@@ -157,7 +161,16 @@ fun ProfileScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             // ── البانر ─────────────────────────────────────────────────────
-            Box(Modifier.fillMaxWidth().height(130.dp)) {
+            val hasBannerImage = user.bannerBase64.isNotBlank() || user.bannerUrl.isNotBlank()
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(130.dp)
+                    .then(
+                        if (hasBannerImage) Modifier.clickable { showBannerViewer = true }
+                        else Modifier
+                    )
+            ) {
                 when {
                     user.bannerBase64.isNotBlank() -> Base64Image(
                         base64 = user.bannerBase64,
@@ -188,12 +201,17 @@ fun ProfileScreen(
             // ── الصورة الرمزية + الاسم + التصنيف ─────────────────────────────
             Column(Modifier.padding(horizontal = 16.dp)) {
                 Box(Modifier.offset(y = (-32).dp)) {
+                    val hasAvatarImage = user.avatarBase64.isNotBlank() || user.avatarUrl.isNotBlank()
                     val avatarModifier = Modifier
                         .size(72.dp)
                         .clip(CircleShape)
                         .border(3.dp, MaterialTheme.colorScheme.background, CircleShape)
                         .padding(3.dp)
                         .clip(CircleShape)
+                        .then(
+                            if (hasAvatarImage) Modifier.clickable { showAvatarViewer = true }
+                            else Modifier
+                        )
 
                     if (user.avatarBase64.isNotBlank()) {
                         Base64Image(base64 = user.avatarBase64, modifier = avatarModifier, cornerRadiusDp = 20)
@@ -420,6 +438,22 @@ fun ProfileScreen(
             }
         }
         }
+    }
+
+    if (showAvatarViewer) {
+        ImageViewerDialog(
+            base64 = room?.avatarBase64,
+            imageUrl = room?.avatarUrl,
+            onDismiss = { showAvatarViewer = false }
+        )
+    }
+
+    if (showBannerViewer) {
+        ImageViewerDialog(
+            base64 = room?.bannerBase64,
+            imageUrl = room?.bannerUrl,
+            onDismiss = { showBannerViewer = false }
+        )
     }
 
     if (showBlockConfirm) {
