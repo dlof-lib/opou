@@ -3,6 +3,7 @@ package com.OPEN.OU.ui.screens
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.OPEN.OU.data.model.Comment
+import com.OPEN.OU.data.model.CommentPermission
 import com.OPEN.OU.data.repository.AuthRepository
 import com.OPEN.OU.data.repository.PostRepository
 import com.OPEN.OU.data.repository.UserRepository
@@ -22,6 +23,11 @@ class CommentsViewModel(
     private val _comments = MutableStateFlow<List<Comment>>(emptyList())
     val comments: StateFlow<List<Comment>> = _comments.asStateFlow()
 
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+    fun clearError() { _errorMessage.value = null }
+
     fun load(postId: String) {
         viewModelScope.launch {
             postRepo.observeComments(postId).collect { _comments.value = it }
@@ -29,7 +35,8 @@ class CommentsViewModel(
     }
 
     /**
-     * يرسل تعليقًا جديدًا، ثم يحاول (best-effort) إشعار صاحب الفقرة الأصلية
+     * يرسل تعليقًا جديدًا، بعد التحقق من إعداد "من يمكنه التعليق" لصاحب الفقرة
+     * (الجميع/المتابعون فقط/لا أحد)، ثم يحاول (best-effort) إشعار صاحب الفقرة الأصلية
      * عبر الجسر Kotlin -> PHP -> FCM. [postAuthorId] اختياري: إن لم يُمرَّر (أو
      * كان هو نفسه المعلّق) لا يُرسل أي إشعار.
      */
@@ -44,6 +51,13 @@ class CommentsViewModel(
         val uid = authRepo.currentUserId ?: return
         if (content.isBlank()) return
         viewModelScope.launch {
+            if (postAuthorId != null && postAuthorId != uid) {
+                val allowed = runCatching { isAllowedToComment(uid, postAuthorId) }.getOrDefault(true)
+                if (!allowed) {
+                    _errorMessage.value = "صاحب الفقرة قيّد من يمكنه التعليق"
+                    return@launch
+                }
+            }
             postRepo.addComment(
                 Comment(
                     postId = postId,
@@ -57,6 +71,15 @@ class CommentsViewModel(
             if (postAuthorId != null && postAuthorId != uid) {
                 notifyPostAuthorBestEffort(postAuthorId, username)
             }
+        }
+    }
+
+    private suspend fun isAllowedToComment(commenterUid: String, postAuthorId: String): Boolean {
+        val author = userRepo.getUser(postAuthorId) ?: return true
+        return when (CommentPermission.fromValue(author.whoCanComment)) {
+            CommentPermission.EVERYONE -> true
+            CommentPermission.NOBODY -> false
+            CommentPermission.TEKERS -> userRepo.isTeking(commenterUid, postAuthorId)
         }
     }
 
