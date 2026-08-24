@@ -8,6 +8,7 @@ import com.OPEN.OU.data.repository.AuthRepository
 import com.OPEN.OU.data.repository.PostRepository
 import com.OPEN.OU.data.repository.UserRepository
 import com.OPEN.OU.network.PhpBridgeRepository
+import com.OPEN.OU.ui.components.MentionUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,14 +24,54 @@ class CommentsViewModel(
     private val _comments = MutableStateFlow<List<Comment>>(emptyList())
     val comments: StateFlow<List<Comment>> = _comments.asStateFlow()
 
+    /** معرّفات التعليقات (ضمن الفقرة المفتوحة حاليًا) التي أعجبت المستخدم الحالي */
+    private val _likedCommentIds = MutableStateFlow<Set<String>>(emptySet())
+    val likedCommentIds: StateFlow<Set<String>> = _likedCommentIds.asStateFlow()
+
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+    val currentUid: String? get() = authRepo.currentUserId
 
     fun clearError() { _errorMessage.value = null }
 
     fun load(postId: String) {
         viewModelScope.launch {
             postRepo.observeComments(postId).collect { _comments.value = it }
+        }
+        authRepo.currentUserId?.let { uid ->
+            viewModelScope.launch {
+                postRepo.observeMyCommentLikes(postId, uid).collect { _likedCommentIds.value = it }
+            }
+        }
+    }
+
+    /** إعجاب/إلغاء إعجاب بتعليق، مع إشعار Best-effort لصاحب التعليق إن لم يكن هو المُعجِب. */
+    fun toggleLike(postId: String, comment: Comment, likerUsername: String) {
+        val uid = authRepo.currentUserId ?: return
+        viewModelScope.launch {
+            runCatching { postRepo.toggleCommentLike(postId, comment.commentId, uid) }
+                .onSuccess { nowLiked ->
+                    if (nowLiked && comment.authorId != uid) {
+                        notifyUserBestEffort(comment.authorId, "أعجب $likerUsername بتعليقك", likerUsername)
+                    }
+                }
+                .onFailure { _errorMessage.value = it.message ?: "تعذّر تسجيل إعجابك بالتعليق" }
+        }
+    }
+
+    /** يحذف تعليقًا — يُستدعى فقط عند التحقق أن المستخدم صاحب التعليق أو صاحب الفقرة في واجهة الاستدعاء. */
+    fun deleteComment(postId: String, commentId: String) {
+        viewModelScope.launch {
+            runCatching { postRepo.deleteComment(postId, commentId) }
+                .onFailure { _errorMessage.value = it.message ?: "تعذّر حذف التعليق" }
+        }
+    }
+
+    private suspend fun notifyUserBestEffort(targetUid: String, title: String, byUsername: String) {
+        runCatching {
+            val targetUser = userRepo.getUser(targetUid) ?: return
+            phpBridge.notifyBestEffort(targetFcmToken = targetUser.fcmToken, title = "أوبو", body = title)
         }
     }
 
@@ -46,7 +87,8 @@ class CommentsViewModel(
         username: String,
         avatar: String,
         postAuthorId: String? = null,
-        avatarBase64: String = ""
+        avatarBase64: String = "",
+        replyTo: Comment? = null
     ) {
         val uid = authRepo.currentUserId ?: return
         if (content.isBlank()) return
@@ -65,11 +107,28 @@ class CommentsViewModel(
                     authorUsername = username,
                     authorAvatarUrl = avatar,
                     authorAvatarBase64 = avatarBase64,
-                    content = content
+                    content = content,
+                    parentCommentId = replyTo?.commentId.orEmpty(),
+                    replyToUsername = replyTo?.authorUsername.orEmpty()
                 )
             )
+            // إشعار صاحب التعليق الأصل بالرد عليه (إن وُجد وكان مختلفًا عن صاحب الفقرة والمُعلّق نفسه)
+            if (replyTo != null && replyTo.authorId != uid && replyTo.authorId != postAuthorId) {
+                notifyUserBestEffort(replyTo.authorId, "ردّ $username على تعليقك", username)
+            }
             if (postAuthorId != null && postAuthorId != uid) {
                 notifyPostAuthorBestEffort(postAuthorId, username)
+            }
+            runCatching { notifyMentionedUsersBestEffort(content, uid, username) }
+        }
+    }
+
+    private suspend fun notifyMentionedUsersBestEffort(content: String, authorUid: String, authorUsername: String) {
+        MentionUtils.extractMentions(content).forEach { mentionedUsername ->
+            runCatching {
+                val mentionedUid = userRepo.getUidByUsername(mentionedUsername) ?: return@runCatching
+                if (mentionedUid == authorUid) return@runCatching
+                notifyUserBestEffort(mentionedUid, "ذكرك $authorUsername في تعليق", authorUsername)
             }
         }
     }
