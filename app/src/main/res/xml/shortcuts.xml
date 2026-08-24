@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    اختصارات التطبيق الثابتة (App Shortcuts) — تظهر عند الضغط المطوّل على
+    أيقونة أوبو في الشاشة الرئيسية للجهاز، وتفتح كل واحدة منها شاشة محدّدة
+    مباشرة دون المرور بالتنقّل المعتاد داخل التطبيق (راجع المعالجة في
+    MainActivity.onNewIntent و OpouNavGraph). تظهر فقط إن كان المستخدم
+    مسجّلاً دخوله بالفعل عند فتح التطبيق.
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <shortcut
+        android:shortcutId="new_post"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_new_post"
+        android:shortcutShortLabel="@string/shortcut_new_post_short"
+        android:shortcutLongLabel="@string/shortcut_new_post_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.OPEN.OU"
+            android:targetClass="com.OPEN.OU.MainActivity">
+            <extra
+                android:name="opou_shortcut"
+                android:value="new_post" />
+        </intent>
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="tekers"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_tekers"
+        android:shortcutShortLabel="@string/shortcut_tekers_short"
+        android:shortcutLongLabel="@string/shortcut_tekers_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.OPEN.OU"
+            android:targetClass="com.OPEN.OU.MainActivity">
+            <extra
+                android:name="opou_shortcut"
+                android:value="tekers" />
+        </intent>
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="account"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_account"
+        android:shortcutShortLabel="@string/shortcut_account_short"
+        android:shortcutLongLabel="@string/shortcut_account_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.OPEN.OU"
+            android:targetClass="com.OPEN.OU.MainActivity">
+            <extra
+                android:name="opou_shortcut"
+                android:value="account" />
+        </intent>
+    </shortcut>
+
+</shortcuts>
