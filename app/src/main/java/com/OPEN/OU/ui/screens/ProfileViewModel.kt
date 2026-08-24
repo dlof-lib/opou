@@ -49,7 +49,7 @@ class ProfileViewModel(
         val myUid = authRepo.currentUserId
         if (myUid != null && myUid != uid) {
             viewModelScope.launch {
-                _isTeking.value = userRepo.isTeking(myUid, uid)
+                _isTeking.value = runCatching { userRepo.isTeking(myUid, uid) }.getOrDefault(false)
             }
             viewModelScope.launch {
                 _isBlocked.value = runCatching { blockRepo.isBlocked(myUid, uid) }.getOrDefault(false)
