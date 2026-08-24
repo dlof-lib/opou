@@ -45,6 +45,11 @@ fun FeedScreen(
     }
 
     Scaffold(
+        // هذه الشاشة تُعرض دائمًا كتبويب داخل الـ Scaffold الخارجي (الذي
+        // يحجز مساحة الشريط السفلي فعليًا)، فنمنع هذا الـ Scaffold الداخلي
+        // من حجز مساحة إضافية لشريط التنقّل السفلي للنظام لتفادي فراغ مضاعف
+        // أسفل الشاشة (بنفس منطق إصلاح الشريط العلوي).
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
