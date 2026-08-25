@@ -23,6 +23,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -56,6 +58,20 @@ private object Routes {
 
 /** تبويبات شريط التنقّل السفلي: الرئيسية / التيكرز / الحساب */
 private enum class MainTab { HOME, TEKERS, ACCOUNT }
+
+/**
+ * مصنع ViewModel بسيط وصريح: يُنشئ النسخة عبر lambda عادية بدل الاعتماد على
+ * إنشاء ViewModelProvider الافتراضي، الذي يتطلّب باطن Reflection باحثًا عن
+ * "مُنشئ بلا معاملات" (no-arg constructor). فئات مثل [ProfileViewModel] لديها
+ * معاملات لها قيم افتراضية فقط (بدون @JvmOverloads)، وهذا لا يُنتج فعليًا
+ * مُنشئًا بلا معاملات في الـ bytecode — ما قد يجعل الإنشاء عبر الانعكاس هشًّا
+ * حسب إصدار مكتبة lifecycle والمسار الذي تسلكه داخليًا. هذا المصنع يتجاوز
+ * الانعكاس تمامًا ويضمن نفس نتيجة استدعاء المُنشئ في كود Kotlin العادي.
+ */
+private class SimpleViewModelFactory<T : ViewModel>(private val creator: () -> T) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <VM : ViewModel> create(modelClass: Class<VM>): VM = creator() as VM
+}
 
 @Composable
 fun OpouNavGraph(
@@ -211,7 +227,12 @@ fun OpouNavGraph(
 
                         MainTab.ACCOUNT -> {
                             if (myUid != null) {
-                                val vm: ProfileViewModel = viewModel()
+                                // key = myUid: يضمن نسخة ViewModel جديدة إن تغيّر المستخدم المسجَّل
+                                // دخوله (تسجيل خروج ثم دخول بحساب آخر على نفس الجلسة).
+                                val vm: ProfileViewModel = viewModel(
+                                    key = "account_$myUid",
+                                    factory = SimpleViewModelFactory { ProfileViewModel() }
+                                )
                                 ProfileScreen(
                                     uid = myUid,
                                     viewModel = vm,
@@ -303,7 +324,10 @@ fun OpouNavGraph(
             arguments = listOf(navArgument("uid") { type = NavType.StringType })
         ) { backStackEntry ->
             val uid = backStackEntry.arguments?.getString("uid").orEmpty()
-            val vm: ProfileViewModel = viewModel()
+            val vm: ProfileViewModel = viewModel(
+                key = "profile_$uid",
+                factory = SimpleViewModelFactory { ProfileViewModel() }
+            )
             ProfileScreen(
                 uid = uid,
                 viewModel = vm,
@@ -317,7 +341,10 @@ fun OpouNavGraph(
             arguments = listOf(navArgument("uid") { type = NavType.StringType })
         ) { backStackEntry ->
             val uid = backStackEntry.arguments?.getString("uid").orEmpty()
-            val vm: ProfileViewModel = viewModel()
+            val vm: ProfileViewModel = viewModel(
+                key = "edit_profile_$uid",
+                factory = SimpleViewModelFactory { ProfileViewModel() }
+            )
             EditRoomScreen(
                 uid = uid,
                 viewModel = vm,
