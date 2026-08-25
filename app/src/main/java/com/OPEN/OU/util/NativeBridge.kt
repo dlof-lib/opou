@@ -129,7 +129,7 @@ object NativeBridge {
 
     private fun fallbackValidateImage(data: ByteArray): Boolean {
         if (data.size < 8) return false
-        val png = data[0] == 0x89.toByte() && data[1] == 0x50 && data[2] == 0x4E && data[3] == 0x47.toByte()
+        val png = data[0] == 0x89.toByte() && data[1] == 0x50.toByte() && data[2] == 0x4E.toByte() && data[3] == 0x47.toByte()
         val jpg = data[0] == 0xFF.toByte() && data[1] == 0xD8.toByte()
         val webp = data.size >= 12 && data[0] == 'R'.code.toByte() && data[1] == 'I'.code.toByte() && data[2] == 'F'.code.toByte() && data[3] == 'F'.code.toByte() && data[8] == 'W'.code.toByte() && data[9] == 'E'.code.toByte() && data[10] == 'B'.code.toByte() && data[11] == 'P'.code.toByte()
         return png || jpg || webp
