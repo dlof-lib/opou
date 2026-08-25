@@ -24,7 +24,7 @@ import com.OPEN.OU.data.model.User
 import com.OPEN.OU.ui.components.Base64Image
 import com.OPEN.OU.ui.components.GradientText
 import com.OPEN.OU.ui.components.ResponsiveContent
-import com.OPEN.OU.ui.components.TekersSkeletonList
+import com.OPEN.OU.ui.components.UserListSkeleton
 
 /**
  * شاشة "التيكرز" — تعرض في تبويبين: من يتابعك (متابعوك) ومن تتابعهم (تتابعهم).
@@ -97,7 +97,7 @@ fun TekersScreen(
 
                 when {
                     isLoading && list.isEmpty() -> {
-                        TekersSkeletonList()
+                        UserListSkeleton(count = 7, showTrailingButton = false)
                     }
                     list.isEmpty() -> {
                         Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
