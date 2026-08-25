@@ -31,20 +31,18 @@ class FeedViewModel(
     private val _shaabiyat = MutableStateFlow<List<Post>>(emptyList())
     val shaabiyat: StateFlow<List<Post>> = _shaabiyat.asStateFlow()
 
-    // صحيحة أثناء الجلب الأول فقط — تُستخدَم لعرض التحميل الهيكلي (Skeleton)
-    // بدل قائمة فارغة "مضلِّلة" قد تُفهَم خطأً على أنها "لا توجد فقرات".
-    private val _isLoading = MutableStateFlow(true)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
-
-    private var feedLoaded = false
-    private var shaabiyatLoaded = false
-
-    private fun markLoadedIfReady() {
-        if (feedLoaded && shaabiyatLoaded) _isLoading.value = false
-    }
-
     private val _myReactions = MutableStateFlow<Map<String, ReactionType>>(emptyMap())
     val myReactions: StateFlow<Map<String, ReactionType>> = _myReactions.asStateFlow()
+
+    // تبقى true حتى تصل أول دفعة بيانات من التغذية والشعبيات معًا، لعرض
+    // التحميل الهيكلي بدل قائمة فارغة مؤقتة قد تُفهم خطأً كـ"لا يوجد محتوى".
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+    private var feedLoaded = false
+    private var shaabiyatLoaded = false
+    private fun markLoaded() {
+        if (feedLoaded && shaabiyatLoaded) _isLoading.value = false
+    }
 
     var isPosting by mutableStateOf(false); private set
 
@@ -65,14 +63,14 @@ class FeedViewModel(
                 postRepo.observeFeed(viewerId = uid, viewerFollowingIds = followingIds, mutedIds = mutedIds).collect {
                     _feed.value = it
                     feedLoaded = true
-                    markLoadedIfReady()
+                    markLoaded()
                 }
             }
             launch {
                 postRepo.observeShaabiyat(viewerId = uid, viewerFollowingIds = followingIds, mutedIds = mutedIds).collect {
                     _shaabiyat.value = it
                     shaabiyatLoaded = true
-                    markLoadedIfReady()
+                    markLoaded()
                 }
             }
         }
@@ -124,17 +122,12 @@ class FeedViewModel(
         replyCommentAuthorId: String = "",
         replyCommentAuthorUsername: String = "",
         replyCommentContent: String = "",
-        /** إن كانت غير null، تُنشر الفقرة الجديدة كمتابعة لسلسلة تبدأ من (أو تمر عبر) هذه الفقرة. */
-        continueFromPost: Post? = null,
         onDone: () -> Unit
     ) {
         val uid = authRepo.currentUserId ?: return
         if (content.isBlank() && imageBase64.isBlank()) return
         // القيمة الآمنة النهائية للإيموجي — تتجاهل أي قيمة خارج المجموعة المتاحة حاليًا (الميزة قيد التطوير)
         val safeEmoji = if (com.OPEN.OU.data.model.ParagraphEmoji.isValid(emoji)) emoji else ""
-        // معرّف السلسلة: إن كانت الفقرة المصدر جزءًا من سلسلة موجودة نتابع نفس المعرّف،
-        // وإلا فرأس السلسلة الجديدة هو معرّف تلك الفقرة نفسها.
-        val threadId = continueFromPost?.let { it.threadId.ifBlank { it.postId } } ?: ""
         viewModelScope.launch {
             isPosting = true
             runCatching {
@@ -160,8 +153,7 @@ class FeedViewModel(
                         replyCommentId = replyCommentId,
                         replyCommentAuthorId = replyCommentAuthorId,
                         replyCommentAuthorUsername = replyCommentAuthorUsername,
-                        replyCommentContent = replyCommentContent,
-                        threadId = threadId
+                        replyCommentContent = replyCommentContent
                     )
                 )
             }.onSuccess { postId ->
