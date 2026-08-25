@@ -44,6 +44,14 @@
                 android:resource="@xml/shortcuts" />
         </activity>
 
+        <!-- شاشة عرض نص الانهيار الكامل (راجع util/CrashReporter.kt). عملية منفصلة
+             حتى تعمل حتى إن كان الانهيار الأصلي سبّبه تلف حالة العملية الرئيسية. -->
+        <activity
+            android:name=".util.CrashDetailsActivity"
+            android:exported="false"
+            android:process=":crash_report"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
+
         <service
             android:name=".service.OpouMessagingService"
             android:exported="false">
