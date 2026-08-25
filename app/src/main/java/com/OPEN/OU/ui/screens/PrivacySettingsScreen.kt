@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.OPEN.OU.data.model.CommentPermission
+import com.OPEN.OU.ui.components.FormSkeleton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,6 +55,10 @@ fun PrivacySettingsScreen(
         }
     ) { padding ->
         val user = room
+        if (user == null) {
+            FormSkeleton(fieldCount = 4, modifier = Modifier.padding(padding))
+            return@Scaffold
+        }
         Column(
             Modifier
                 .padding(padding)
