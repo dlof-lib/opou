@@ -4,12 +4,16 @@ import android.app.Application
 import com.OPEN.OU.notifications.FcmTopics
 import com.OPEN.OU.notifications.NotificationDisplay
 import com.OPEN.OU.notifications.SuggestionsWorker
+import com.OPEN.OU.util.CrashReporter
 import com.google.firebase.FirebaseApp
 import com.google.firebase.database.FirebaseDatabase
 
 class OpouApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        // أول شيء دائمًا: قبل أي تهيئة أخرى قد تفشل هي نفسها، حتى نلتقط انهيارها أيضًا.
+        CrashReporter.install(this)
+
         FirebaseApp.initializeApp(this)
         // تفعيل الاستمرارية دون اتصال (Offline persistence) لقاعدة Realtime Database
         runCatching { FirebaseDatabase.getInstance().setPersistenceEnabled(true) }
