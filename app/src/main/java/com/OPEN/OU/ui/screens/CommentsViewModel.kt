@@ -50,7 +50,7 @@ class CommentsViewModel(
         }
         authRepo.currentUserId?.let { uid ->
             viewModelScope.launch {
-                postRepo.observeMyCommentLikes(postId, uid)
+                postRepo.observeMyCommentLikes(uid)
                     .catch { _likedCommentIds.value = emptySet() }
                     .collect { _likedCommentIds.value = it }
             }
