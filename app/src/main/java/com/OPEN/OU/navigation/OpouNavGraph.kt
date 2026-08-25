@@ -3,13 +3,15 @@ package com.OPEN.OU.navigation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -22,7 +24,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -31,10 +35,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import coil.compose.AsyncImage
 import com.OPEN.OU.R
 import com.OPEN.OU.data.model.Post
 import com.OPEN.OU.data.repository.AuthRepository
 import com.OPEN.OU.data.repository.UserRepository
+import com.OPEN.OU.ui.components.Base64Image
 import com.OPEN.OU.ui.components.CommentsSheet
 import com.OPEN.OU.ui.screens.*
 import com.OPEN.OU.util.TwoFactorGate
@@ -56,10 +62,13 @@ private object Routes {
     fun thread(threadId: String) = "thread/$threadId"
 }
 
-/** تبويبات شريط التنقّل السفلي: الرئيسية / التيكرز. زر "الإعدادات" بجانبهما ليس تبويبًا
- *  بمحتوى دائم بل ينتقل مباشرة لشاشة الإعدادات (راجع [OpouBottomBar]) — صفحة "الحساب" التي
- *  كانت تعرض [ProfileScreen] أُزيلت بسبب انهيار متكرر عند فتحها لم يُحدَّد سببه بعد. */
-private enum class MainTab { HOME, TEKERS }
+/** تبويبات شريط التنقّل السفلي: الرئيسية / التيكرز / الحساب. تبويب "الحساب" يعرض
+ *  [ProfileScreen] الخاصة بالمستخدم الحالي (uid الخاص به)، بأيقونة صورته الرمزية
+ *  في الشريط السفلي، مع إمكانية الوصول لشاشة الإعدادات من داخل تلك الصفحة (زر
+ *  الترس أعلى الشاشة، عبر onOpenSettings). *ملاحظة*: هذا التبويب كان قد أُزيل
+ *  سابقًا بسبب انهيار متكرر لم يُحدَّد سببه؛ أُعيد الآن بناءً على طلب صريح — إن
+ *  تكرّر الانهيار عند فتحه يُستحسن مراجعة السبب الأصلي قبل الاعتماد عليه. */
+private enum class MainTab { HOME, TEKERS, ACCOUNT }
 
 /**
  * مصنع ViewModel بسيط وصريح: يُنشئ النسخة عبر lambda عادية بدل الاعتماد على
@@ -151,8 +160,8 @@ fun OpouNavGraph(
                 navController.navigate(Routes.MAIN) { launchSingleTop = true; popUpTo(Routes.MAIN) }
             }
             "account" -> {
-                // زر اختصار "حساب" أصبح يفتح الإعدادات مباشرة بعد إزالة تبويب/صفحة الحساب.
-                navController.navigate(Routes.SETTINGS)
+                mainTab = MainTab.ACCOUNT
+                navController.navigate(Routes.MAIN) { launchSingleTop = true; popUpTo(Routes.MAIN) }
             }
         }
         onShortcutConsumed()
@@ -199,7 +208,8 @@ fun OpouNavGraph(
                     OpouBottomBar(
                         selected = mainTab,
                         onSelect = { mainTab = it },
-                        onOpenSettings = { navController.navigate(Routes.SETTINGS) }
+                        currentAvatar = currentAvatar,
+                        currentAvatarBase64 = currentAvatarBase64
                     )
                 }
             ) { padding ->
@@ -227,6 +237,24 @@ fun OpouNavGraph(
                                 viewModel = vm,
                                 onOpenProfile = { uid -> navController.navigate(Routes.profile(uid)) }
                             )
+                        }
+
+                        MainTab.ACCOUNT -> {
+                            val myUid = authRepo.currentUserId
+                            if (myUid != null) {
+                                val vm: ProfileViewModel = viewModel(
+                                    key = "profile_$myUid",
+                                    factory = SimpleViewModelFactory { ProfileViewModel() }
+                                )
+                                ProfileScreen(
+                                    uid = myUid,
+                                    viewModel = vm,
+                                    onBack = {},
+                                    showBackButton = false,
+                                    onEditRoom = { navController.navigate(Routes.editProfile(myUid)) },
+                                    onOpenSettings = { navController.navigate(Routes.SETTINGS) }
+                                )
+                            }
                         }
                     }
                 }
@@ -356,7 +384,12 @@ fun OpouNavGraph(
 }
 
 @Composable
-private fun OpouBottomBar(selected: MainTab, onSelect: (MainTab) -> Unit, onOpenSettings: () -> Unit) {
+private fun OpouBottomBar(
+    selected: MainTab,
+    onSelect: (MainTab) -> Unit,
+    currentAvatar: String,
+    currentAvatarBase64: String
+) {
     NavigationBar(containerColor = MaterialTheme.colorScheme.background) {
         NavigationBarItem(
             selected = selected == MainTab.HOME,
@@ -390,18 +423,57 @@ private fun OpouBottomBar(selected: MainTab, onSelect: (MainTab) -> Unit, onOpen
                 indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
             )
         )
-        // ليس تبويبًا فعليًا (لا يُخزَّن كحالة "محدَّد") بل ينقل مباشرة لشاشة الإعدادات —
-        // يُبقي تسجيل الخروج وإعدادات الخصوصية متاحين بعد إزالة صفحة "الحساب".
         NavigationBarItem(
-            selected = false,
-            onClick = onOpenSettings,
-            icon = { Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.nav_account)) },
+            selected = selected == MainTab.ACCOUNT,
+            onClick = { onSelect(MainTab.ACCOUNT) },
+            icon = {
+                AccountNavIcon(
+                    avatarUrl = currentAvatar,
+                    avatarBase64 = currentAvatarBase64,
+                    selected = selected == MainTab.ACCOUNT
+                )
+            },
             label = { Text(stringResource(R.string.nav_account)) },
             colors = NavigationBarItemDefaults.colors(
                 selectedIconColor = MaterialTheme.colorScheme.primary,
                 selectedTextColor = MaterialTheme.colorScheme.primary,
                 indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
             )
+        )
+    }
+}
+
+/** أيقونة تبويب "الحساب": تعرض صورة المستخدم الرمزية الحقيقية إن وُجدت (Base64 أو رابط)،
+ *  وإلا أيقونة شخص افتراضية — بدل أيقونة ترس عامة، لتمييز التبويب كملف شخصي حقيقي. */
+@Composable
+private fun AccountNavIcon(avatarUrl: String, avatarBase64: String, selected: Boolean) {
+    val hasImage = avatarBase64.isNotBlank() || avatarUrl.isNotBlank()
+    if (hasImage) {
+        Box(
+            Modifier
+                .size(24.dp)
+                .clip(CircleShape)
+        ) {
+            if (avatarBase64.isNotBlank()) {
+                Base64Image(
+                    base64 = avatarBase64,
+                    modifier = Modifier.size(24.dp),
+                    cornerRadiusDp = 24
+                )
+            } else {
+                AsyncImage(
+                    model = avatarUrl,
+                    contentDescription = stringResource(R.string.nav_account),
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(CircleShape)
+                )
+            }
+        }
+    } else {
+        Icon(
+            if (selected) Icons.Filled.AccountCircle else Icons.Outlined.AccountCircle,
+            contentDescription = stringResource(R.string.nav_account)
         )
     }
 }
