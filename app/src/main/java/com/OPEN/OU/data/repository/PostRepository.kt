@@ -422,7 +422,8 @@ class PostRepository(
     }
 
     /** إعجاب/إلغاء إعجاب ⭐ بتعليق — يمنع الازدواجية عبر فهرس /commentLikes مع فهرس معكوس لعرض حالة المستخدم فوريًا. */
-    suspend fun toggleCommentLike(postId: String, commentId: String, uid: String) {
+    /** يبدّل إعجاب المستخدم بتعليق. يُعيد true إن أصبح التعليق "مُعجَبًا به" بعد الاستدعاء، false إن أُلغي الإعجاب. */
+    suspend fun toggleCommentLike(postId: String, commentId: String, uid: String): Boolean {
         val likeRef = commentLikesRef.child(commentId).child(uid)
         val alreadyLiked = likeRef.get().await().exists()
         val commentCountRef = commentsRef.child(postId).child(commentId).child("likesCount")
@@ -430,10 +431,12 @@ class PostRepository(
             likeRef.removeValue().await()
             userCommentLikesRef.child(uid).child(commentId).removeValue().await()
             commentCountRef.setValue(ServerValue.increment(-1)).await()
+            return false
         } else {
             likeRef.setValue(true).await()
             userCommentLikesRef.child(uid).child(commentId).setValue(true).await()
             commentCountRef.setValue(ServerValue.increment(1)).await()
+            return true
         }
     }
 
