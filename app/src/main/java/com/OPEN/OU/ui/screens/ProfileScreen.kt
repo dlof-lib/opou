@@ -82,7 +82,23 @@ fun ProfileScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val uriHandler = LocalUriHandler.current
 
-    LaunchedEffect(uid) { viewModel.load(uid) }
+    // مدة انتظار قصيرة قبل عرض حالة "تعذّر التحميل" بدل بقاء الهيكل العظمي (Skeleton)
+    // يدور إلى الأبد بصمت إن فشل الاتصال أو كانت البيانات غير موجودة أصلًا.
+    var showLoadTimeout by remember(uid) { mutableStateOf(false) }
+
+    LaunchedEffect(uid) {
+        showLoadTimeout = false
+        // load() ذاتها لا تطلق استثناءً (كل عملياتها الداخلية محمية بـ runCatching)،
+        // لكن runCatching هنا يبقى خط دفاع أخير رخيصًا يمنع أي مفاجأة مستقبلية من
+        // إسقاط الشاشة بالكامل عند فتحها.
+        runCatching { viewModel.load(uid) }
+    }
+    LaunchedEffect(uid, room) {
+        if (room == null) {
+            kotlinx.coroutines.delay(8000)
+            showLoadTimeout = true
+        }
+    }
     LaunchedEffect(errorMessage) {
         errorMessage?.let {
             snackbarHostState.showSnackbar(it)
@@ -151,7 +167,33 @@ fun ProfileScreen(
         val user = room
         if (user == null) {
             ResponsiveContent(modifier = Modifier.padding(padding)) {
-                ProfileHeaderSkeleton()
+                if (showLoadTimeout) {
+                    Column(
+                        modifier = Modifier.fillMaxSize().padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            Icons.Filled.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            "تعذّر تحميل هذه الغرفة. تحقّق من اتصالك بالإنترنت ثم أعد المحاولة.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        Button(onClick = {
+                            showLoadTimeout = false
+                            runCatching { viewModel.load(uid, force = true) }
+                        }) { Text("إعادة المحاولة") }
+                    }
+                } else {
+                    ProfileHeaderSkeleton()
+                }
             }
             return@Scaffold
         }
