@@ -46,13 +46,19 @@ class ProfileViewModel(
 
     val currentUid: String? get() = authRepo.currentUserId
 
-    fun load(uid: String) {
+    /**
+     * يحمّل غرفة [uid]. عادة يُستدعى مرة واحدة لكل uid بسبب [loadedUid]/[loadJob] كتخزين
+     * مؤقت رخيص يمنع إعادة فتح استماع Realtime مكرر عند إعادة التركيب (recomposition).
+     * مرّر [force] = true لإعادة المحاولة صراحة (مثال: زر "إعادة المحاولة" بعد فشل التحميل) —
+     * بدونها كان الاستماع القائم (النشط) يمنع إعادة المحاولة فعليًا حتى لو ظلت النتيجة فارغة.
+     */
+    fun load(uid: String, force: Boolean = false) {
         if (uid.isBlank()) {
             _room.value = null
             _errorMessage.value = "معرّف الحساب غير صالح"
             return
         }
-        if (loadedUid == uid && loadJob?.isActive == true) return
+        if (!force && loadedUid == uid && loadJob?.isActive == true) return
         loadedUid = uid
 
         loadJob?.cancel()
