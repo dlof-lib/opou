@@ -21,7 +21,9 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.OPEN.OU.data.model.CustomButton
 import com.OPEN.OU.ui.components.Base64Image
+import com.OPEN.OU.ui.components.FormSkeleton
 import com.OPEN.OU.ui.components.ImagePickerButton
+import com.OPEN.OU.ui.components.ProfileHeaderSkeleton
 import com.OPEN.OU.ui.components.ResponsiveContent
 import com.OPEN.OU.ui.theme.OpouBrandGradient
 import com.OPEN.OU.util.ImageCodec
@@ -106,6 +108,15 @@ fun EditRoomScreen(
             )
         }
     ) { padding ->
+        if (!initialized) {
+            ResponsiveContent(modifier = Modifier.padding(padding)) {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    ProfileHeaderSkeleton()
+                    FormSkeleton(fieldCount = 2)
+                }
+            }
+            return@Scaffold
+        }
         ResponsiveContent(modifier = Modifier.padding(padding)) {
         Column(
             Modifier
