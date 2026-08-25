@@ -4,11 +4,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.CheckCircle
@@ -151,76 +152,96 @@ fun ProfileScreen(
         val user = room
         if (user == null) {
             ResponsiveContent(modifier = Modifier.padding(padding)) {
-                Column(
-                    Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 24.dp)
                 ) {
-                    ProfileHeaderSkeleton()
-                    PostListSkeleton(count = 2)
+                    item {
+                        ProfileHeaderSkeleton()
+                        PostListSkeleton(count = 2)
+                    }
                 }
             }
             return@Scaffold
         }
+
         val isLocked = user.isPrivateRoom && !isOwnProfile && !isTeking
 
         ResponsiveContent(modifier = Modifier.padding(padding)) {
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
+            // مهم: لا نستخدم Column + verticalScroll هنا. صفحة الحساب قد تحتوي على
+            // عدد كبير من الفقرات والصور Base64، وكان تركيبها كلها دفعة واحدة يرفع
+            // استهلاك الذاكرة وقد يؤدي إلى OOM ثم إغلاق التطبيق عند فتح الحساب.
+            // LazyColumn يركّب العناصر القريبة من الشاشة فقط.
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 24.dp)
             ) {
-                RoomHeaderCard(
-                    user = user,
-                    isOwnProfile = isOwnProfile,
-                    avatarError = avatarError,
-                    onAvatarErrorChange = { avatarError = it },
-                    onAvatarClick = { showAvatarViewer = true },
-                    onBannerClick = { showBannerViewer = true },
-                    onAvatarPicked = { encodedBase64 -> viewModel.updateAvatar(uid, encodedBase64) }
-                )
-
-                Spacer(Modifier.height(22.dp))
+                item(key = "profile_header") {
+                    RoomHeaderCard(
+                        user = user,
+                        isOwnProfile = isOwnProfile,
+                        avatarError = avatarError,
+                        onAvatarErrorChange = { avatarError = it },
+                        onAvatarClick = { showAvatarViewer = true },
+                        onBannerClick = { showBannerViewer = true },
+                        onAvatarPicked = { encodedBase64 -> viewModel.updateAvatar(uid, encodedBase64) }
+                    )
+                    Spacer(Modifier.height(22.dp))
+                }
 
                 if (isLocked) {
-                    RoomLockedNotice()
-                    Spacer(Modifier.height(18.dp))
-                    Box(Modifier.padding(horizontal = 20.dp)) {
-                        RoomActionButton(
-                            isOwnProfile = false,
-                            canShowTek = myUid != null,
-                            isTeking = isTeking,
-                            onToggleTek = { viewModel.toggleTek(uid) },
-                            onEditRoom = onEditRoom
-                        )
+                    item(key = "private_room") {
+                        RoomLockedNotice()
+                        Spacer(Modifier.height(18.dp))
+                        Box(Modifier.padding(horizontal = 20.dp)) {
+                            RoomActionButton(
+                                isOwnProfile = false,
+                                canShowTek = myUid != null,
+                                isTeking = isTeking,
+                                onToggleTek = { viewModel.toggleTek(uid) },
+                                onEditRoom = onEditRoom
+                            )
+                        }
+                        Spacer(Modifier.height(28.dp))
                     }
-                    Spacer(Modifier.height(28.dp))
                 } else {
-                    TabRow(
-                        selectedTabIndex = selectedTab,
-                        containerColor = Color.Transparent
-                    ) {
-                        Tab(
-                            selected = selectedTab == 0,
-                            onClick = { selectedTab = 0 },
-                            text = { Text("نبذة", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge) }
-                        )
-                        Tab(
-                            selected = selectedTab == 1,
-                            onClick = { selectedTab = 1 },
-                            text = {
-                                Text(
-                                    "${stringResource(R.string.profile_paragraphs)} (${user.paragraphsCount})",
-                                    fontWeight = FontWeight.Bold,
-                                    style = MaterialTheme.typography.labelLarge
-                                )
-                            }
-                        )
+                    item(key = "profile_tabs") {
+                        TabRow(
+                            selectedTabIndex = selectedTab,
+                            containerColor = Color.Transparent
+                        ) {
+                            Tab(
+                                selected = selectedTab == 0,
+                                onClick = { selectedTab = 0 },
+                                text = {
+                                    Text(
+                                        "نبذة",
+                                        fontWeight = FontWeight.Bold,
+                                        style = MaterialTheme.typography.labelLarge
+                                    )
+                                }
+                            )
+                            Tab(
+                                selected = selectedTab == 1,
+                                onClick = { selectedTab = 1 },
+                                text = {
+                                    Text(
+                                        "${stringResource(R.string.profile_paragraphs)} (${user.paragraphsCount})",
+                                        fontWeight = FontWeight.Bold,
+                                        style = MaterialTheme.typography.labelLarge
+                                    )
+                                }
+                            )
+                        }
                     }
 
-                    when (selectedTab) {
-                        0 -> {
-                            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp)) {
+                    if (selectedTab == 0) {
+                        item(key = "profile_overview") {
+                            Column(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 20.dp, vertical = 16.dp)
+                            ) {
                                 RoomInfoRow(
                                     icon = Icons.Filled.Info,
                                     title = stringResource(R.string.profile_overview_title)
@@ -279,23 +300,37 @@ fun ProfileScreen(
                                                         modifier = Modifier.size(14.dp)
                                                     )
                                                 },
-                                                label = { Text(platform.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.labelSmall) }
+                                                label = {
+                                                    Text(
+                                                        platform.replaceFirstChar { it.uppercase() },
+                                                        style = MaterialTheme.typography.labelSmall
+                                                    )
+                                                }
                                             )
                                         }
                                     }
                                     Spacer(Modifier.height(16.dp))
                                 }
 
-                                if (user.customButtons.isNotEmpty()) {
+                                val validButtons = user.customButtons.filter {
+                                    it.label.isNotBlank() && it.url.isNotBlank()
+                                }
+                                if (validButtons.isNotEmpty()) {
                                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        user.customButtons.filter { it.label.isNotBlank() && it.url.isNotBlank() }.forEach { button ->
+                                        validButtons.forEach { button ->
                                             OutlinedButton(
                                                 onClick = {
-                                                    val normalized = if (button.url.startsWith("http")) button.url else "https://${button.url}"
+                                                    val normalized = if (button.url.startsWith("http")) {
+                                                        button.url
+                                                    } else {
+                                                        "https://${button.url}"
+                                                    }
                                                     runCatching { uriHandler.openUri(normalized) }
                                                 },
                                                 modifier = Modifier.fillMaxWidth()
-                                            ) { Text(button.label) }
+                                            ) {
+                                                Text(button.label)
+                                            }
                                         }
                                     }
                                     Spacer(Modifier.height(18.dp))
@@ -310,41 +345,51 @@ fun ProfileScreen(
                                 )
                             }
                         }
-
-                        else -> {
-                            Column(Modifier.fillMaxWidth().padding(top = 6.dp)) {
-                                if (posts.isEmpty()) {
-                                    Box(
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 56.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            "لا توجد فقرات بعد",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                } else {
-                                    posts.forEach { post ->
-                                        PostCard(
-                                            post = post,
-                                            currentReaction = ReactionType.NONE,
-                                            onReact = {},
-                                            onComment = {},
-                                            onTek = {},
-                                            onOpenProfile = {},
-                                            isOwnPost = isOwnProfile,
-                                            onTogglePin = if (isOwnProfile) { { viewModel.togglePin(post) } } else null,
-                                            onBlockAuthor = if (!isOwnProfile) { { showBlockConfirm = true } } else null
-                                        )
-                                    }
+                    } else {
+                        if (posts.isEmpty()) {
+                            item(key = "empty_posts") {
+                                Box(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 56.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        "لا توجد فقرات بعد",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
+                            }
+                        } else {
+                            itemsIndexed(
+                                items = posts,
+                                key = { index, post ->
+                                    post.postId.takeIf { it.isNotBlank() }
+                                        ?: "${post.authorId}_${post.createdAt}_$index"
+                                }
+                            ) { _, post ->
+                                PostCard(
+                                    post = post,
+                                    currentReaction = ReactionType.NONE,
+                                    onReact = {},
+                                    onComment = {},
+                                    onTek = {},
+                                    onOpenProfile = {},
+                                    isOwnPost = isOwnProfile,
+                                    onTogglePin = if (isOwnProfile) {
+                                        { viewModel.togglePin(post) }
+                                    } else null,
+                                    onBlockAuthor = if (!isOwnProfile) {
+                                        { showBlockConfirm = true }
+                                    } else null
+                                )
                             }
                         }
                     }
+                }
 
+                item(key = "profile_bottom_space") {
                     Spacer(Modifier.height(24.dp))
                 }
             }
