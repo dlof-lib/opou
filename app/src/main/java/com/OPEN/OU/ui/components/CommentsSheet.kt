@@ -66,6 +66,7 @@ fun CommentsSheet(
 ) {
     val comments by viewModel.comments.collectAsState()
     val likedCommentIds by viewModel.likedCommentIds.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
     var text by remember { mutableStateOf("") }
     var replyingTo by remember { mutableStateOf<Comment?>(null) }
 
@@ -160,7 +161,11 @@ fun CommentsSheet(
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
 
                     // قائمة التعليقات
-                    if (comments.isEmpty()) {
+                    if (isLoading) {
+                        Box(Modifier.weight(1f).fillMaxWidth()) {
+                            CommentListSkeleton(count = 5)
+                        }
+                    } else if (comments.isEmpty()) {
                         Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Box(
