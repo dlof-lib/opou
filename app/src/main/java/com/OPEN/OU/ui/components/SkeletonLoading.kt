@@ -68,7 +68,7 @@ private fun opouShimmerBrush(widthPx: Float, sweepOffset: Float): Brush {
  * بتأخير بدء [staggerIndex] يضربه [staggerDelayMs] لخلق تأثير الظهور المتدرّج.
  */
 @Composable
-fun SkeletonBlock(
+fun OpouSkeletonBlock(
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(8.dp),
     staggerIndex: Int = 0,
@@ -106,12 +106,12 @@ fun SkeletonBlock(
 
 /** سطر نص هيكلي بعرض واحتفال محدَّدين — يُستخدم لمحاكاة الأسماء والفقرات. */
 @Composable
-fun SkeletonLine(
+fun OpouSkeletonLine(
     modifier: Modifier = Modifier.fillMaxWidth(),
     height: Dp = 12.dp,
     staggerIndex: Int = 0
 ) {
-    SkeletonBlock(
+    OpouSkeletonBlock(
         modifier = modifier.height(height),
         shape = RoundedCornerShape(50),
         staggerIndex = staggerIndex
@@ -120,8 +120,8 @@ fun SkeletonLine(
 
 /** دائرة هيكلية — للصور الرمزية. */
 @Composable
-fun SkeletonCircle(size: Dp, staggerIndex: Int = 0) {
-    SkeletonBlock(
+fun OpouSkeletonCircle(size: Dp, staggerIndex: Int = 0) {
+    OpouSkeletonBlock(
         modifier = Modifier.size(size),
         shape = CircleShape,
         staggerIndex = staggerIndex
@@ -134,26 +134,26 @@ fun SkeletonCircle(size: Dp, staggerIndex: Int = 0) {
  * الحقيقية.
  */
 @Composable
-fun PostCardSkeleton(staggerIndex: Int = 0) {
+fun OpouPostCardSkeleton(staggerIndex: Int = 0) {
     Column(Modifier.fillMaxWidth().padding(12.dp)) {
         Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-            SkeletonCircle(size = 38.dp, staggerIndex = staggerIndex)
+            OpouSkeletonCircle(size = 38.dp, staggerIndex = staggerIndex)
             Spacer(Modifier.width(9.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                SkeletonLine(modifier = Modifier.fillMaxWidth(0.32f), height = 12.dp, staggerIndex = staggerIndex)
-                SkeletonLine(modifier = Modifier.fillMaxWidth(0.22f), height = 9.dp, staggerIndex = staggerIndex + 1)
+                OpouSkeletonLine(modifier = Modifier.fillMaxWidth(0.32f), height = 12.dp, staggerIndex = staggerIndex)
+                OpouSkeletonLine(modifier = Modifier.fillMaxWidth(0.22f), height = 9.dp, staggerIndex = staggerIndex + 1)
             }
         }
         Spacer(Modifier.height(12.dp))
-        SkeletonLine(height = 13.dp, staggerIndex = staggerIndex + 1)
+        OpouSkeletonLine(height = 13.dp, staggerIndex = staggerIndex + 1)
         Spacer(Modifier.height(7.dp))
-        SkeletonLine(modifier = Modifier.fillMaxWidth(0.75f), height = 13.dp, staggerIndex = staggerIndex + 2)
+        OpouSkeletonLine(modifier = Modifier.fillMaxWidth(0.75f), height = 13.dp, staggerIndex = staggerIndex + 2)
         Spacer(Modifier.height(7.dp))
-        SkeletonLine(modifier = Modifier.fillMaxWidth(0.5f), height = 13.dp, staggerIndex = staggerIndex + 2)
+        OpouSkeletonLine(modifier = Modifier.fillMaxWidth(0.5f), height = 13.dp, staggerIndex = staggerIndex + 2)
         Spacer(Modifier.height(14.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
             repeat(4) { i ->
-                SkeletonLine(modifier = Modifier.width(34.dp), height = 16.dp, staggerIndex = staggerIndex + i)
+                OpouSkeletonLine(modifier = Modifier.width(34.dp), height = 16.dp, staggerIndex = staggerIndex + i)
             }
         }
     }
@@ -168,7 +168,7 @@ fun PostCardSkeleton(staggerIndex: Int = 0) {
 fun FeedSkeletonList(count: Int = 5) {
     Column(Modifier.fillMaxWidth()) {
         repeat(count) { index ->
-            PostCardSkeleton(staggerIndex = index * 2)
+            OpouPostCardSkeleton(staggerIndex = index * 2)
         }
     }
 }
@@ -180,11 +180,11 @@ fun TekerRowSkeleton(staggerIndex: Int = 0) {
         modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
     ) {
-        SkeletonCircle(size = 40.dp, staggerIndex = staggerIndex)
+        OpouSkeletonCircle(size = 40.dp, staggerIndex = staggerIndex)
         Spacer(Modifier.width(10.dp))
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            SkeletonLine(modifier = Modifier.width(120.dp), height = 12.dp, staggerIndex = staggerIndex)
-            SkeletonLine(modifier = Modifier.width(80.dp), height = 9.dp, staggerIndex = staggerIndex + 1)
+            OpouSkeletonLine(modifier = Modifier.width(120.dp), height = 12.dp, staggerIndex = staggerIndex)
+            OpouSkeletonLine(modifier = Modifier.width(80.dp), height = 9.dp, staggerIndex = staggerIndex + 1)
         }
     }
     androidx.compose.material3.HorizontalDivider(
@@ -206,10 +206,10 @@ fun TekersSkeletonList(count: Int = 8) {
  * بطاقة إحصائيات، وقسمان (لمحة/سيرة ذاتية) — بنفس أبعاد ProfileScreen الحقيقية.
  */
 @Composable
-fun ProfileHeaderSkeleton() {
+fun OpouProfileHeaderSkeleton() {
     Column(Modifier.fillMaxWidth()) {
         // البانر
-        SkeletonBlock(
+        OpouSkeletonBlock(
             modifier = Modifier.fillMaxWidth().height(130.dp),
             shape = RoundedCornerShape(0.dp),
             staggerIndex = 0
@@ -217,30 +217,30 @@ fun ProfileHeaderSkeleton() {
 
         Column(Modifier.padding(horizontal = 16.dp)) {
             Box(Modifier.padding(top = (-32).dp)) {
-                SkeletonCircle(size = 72.dp, staggerIndex = 1)
+                OpouSkeletonCircle(size = 72.dp, staggerIndex = 1)
             }
 
             Spacer(Modifier.height(10.dp))
-            SkeletonLine(modifier = Modifier.width(140.dp), height = 18.dp, staggerIndex = 1)
+            OpouSkeletonLine(modifier = Modifier.width(140.dp), height = 18.dp, staggerIndex = 1)
             Spacer(Modifier.height(10.dp))
-            SkeletonLine(modifier = Modifier.width(100.dp), height = 26.dp, staggerIndex = 2)
+            OpouSkeletonLine(modifier = Modifier.width(100.dp), height = 26.dp, staggerIndex = 2)
 
             Spacer(Modifier.height(18.dp))
-            SkeletonBlock(
+            OpouSkeletonBlock(
                 modifier = Modifier.fillMaxWidth().height(66.dp),
                 shape = RoundedCornerShape(18.dp),
                 staggerIndex = 2
             )
 
             Spacer(Modifier.height(16.dp))
-            SkeletonBlock(
+            OpouSkeletonBlock(
                 modifier = Modifier.fillMaxWidth().height(64.dp),
                 shape = RoundedCornerShape(18.dp),
                 staggerIndex = 3
             )
 
             Spacer(Modifier.height(12.dp))
-            SkeletonBlock(
+            OpouSkeletonBlock(
                 modifier = Modifier.fillMaxWidth().height(90.dp),
                 shape = RoundedCornerShape(18.dp),
                 staggerIndex = 4
