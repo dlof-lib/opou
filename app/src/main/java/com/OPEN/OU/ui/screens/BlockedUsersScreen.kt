@@ -20,7 +20,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.OPEN.OU.data.model.User
 import com.OPEN.OU.ui.components.Base64Image
-import com.OPEN.OU.ui.components.TekersSkeletonList
+import com.OPEN.OU.ui.components.UserListSkeleton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,7 +47,7 @@ fun BlockedUsersScreen(
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             when {
-                isLoading -> TekersSkeletonList(count = 5)
+                isLoading -> UserListSkeleton(count = 6, showTrailingButton = true)
                 blockedUsers.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Filled.Block, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(36.dp))
