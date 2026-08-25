@@ -1,54 +1,60 @@
 package com.OPEN.OU.ui.screens
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.ScaffoldDefaults
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Notes
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.PersonRemove
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Sell
+import androidx.compose.material.icons.outlined.ArrowBackIosNew
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import com.OPEN.OU.R
 import com.OPEN.OU.data.model.ReactionType
 import com.OPEN.OU.data.repository.AuthRepository
+import com.OPEN.OU.ui.components.Base64Image
+import com.OPEN.OU.ui.components.GradientText
+import com.OPEN.OU.ui.components.ImagePickerButton
+import com.OPEN.OU.ui.components.ImageViewerDialog
 import com.OPEN.OU.ui.components.PostCard
 import com.OPEN.OU.ui.components.ProfileHeaderSkeleton
+import com.OPEN.OU.ui.components.PostListSkeleton
 import com.OPEN.OU.ui.components.ResponsiveContent
+import com.OPEN.OU.ui.theme.OpouAccentGreen
+import com.OPEN.OU.ui.theme.OpouBrandGradient
+import com.OPEN.OU.util.ImageCodec
 
 /**
- * شاشة "الغرفة" (الملف الشخصي). مقسّمة عبر عدة ملفات لسهولة الصيانة:
- * - ProfileTopBar.kt — الشريط العلوي.
- * - ProfileHeaderSection.kt — البانر + الصورة الرمزية + الاسم + بطاقة الإحصائيات.
- * - ProfileInfoSection.kt — لمحة/السيرة/الروابط + زر الإجراء الرئيسي.
- * - ProfileDialogs.kt — معاينة الصور وتأكيد الحظر.
- * - ProfileCommonUi.kt — عناصر مشتركة صغيرة (ProfileSectionCard/StatColumn/VerticalDivider).
- * هذا الملف هو المنسّق فقط: يحمل الحالة، ويستدعي الأقسام أعلاه بالترتيب.
+ * شاشة "الغرفة" (الملف الشخصي): بانر + صورة رمزية متراكبة (بنفس أسلوب EditRoomScreen)،
+ * بطاقة إحصائيات، وقسمان منظّمان بعنوانين واضحين: "لمحة" (تصنيف الغرفة) و"السيرة
+ * الذاتية". لصاحب الغرفة نفسه: زر تعديل بارز أعلى الشاشة (بجانب الإعدادات) وزر
+ * تعديل كامل أسفل البطاقة، مع دعوة صريحة لإضافة سيرة ذاتية إن كانت فارغة.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,23 +81,7 @@ fun ProfileScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val uriHandler = LocalUriHandler.current
 
-    // مدة انتظار قصيرة قبل عرض حالة "تعذّر التحميل" بدل بقاء الهيكل العظمي (Skeleton)
-    // يدور إلى الأبد بصمت إن فشل الاتصال أو كانت البيانات غير موجودة أصلًا.
-    var showLoadTimeout by remember(uid) { mutableStateOf(false) }
-
-    LaunchedEffect(uid) {
-        showLoadTimeout = false
-        // load() ذاتها لا تطلق استثناءً (كل عملياتها الداخلية محمية بـ runCatching)،
-        // لكن runCatching هنا يبقى خط دفاع أخير رخيصًا يمنع أي مفاجأة مستقبلية من
-        // إسقاط الشاشة بالكامل عند فتحها.
-        runCatching { viewModel.load(uid) }
-    }
-    LaunchedEffect(uid, room) {
-        if (room == null) {
-            kotlinx.coroutines.delay(8000)
-            showLoadTimeout = true
-        }
-    }
+    LaunchedEffect(uid) { viewModel.load(uid) }
     LaunchedEffect(errorMessage) {
         errorMessage?.let {
             snackbarHostState.showSnackbar(it)
@@ -103,24 +93,56 @@ fun ProfileScreen(
         // عند العرض كتبويب "الحساب" (showBackButton = false) تكون الشاشة
         // متداخلة داخل الـ Scaffold الخارجي في OpouNavGraph الذي يحجز مساحة
         // الشريط السفلي فعليًا، فلا داعي لأن يحجز هذا الـ Scaffold الداخلي
-        // مساحة إضافية لشريط التنقّل السفلي للنظام. عند العرض كشاشة مستقلة
-        // (فتح ملف شخص آخر) نُبقي السلوك الافتراضي لأنها غير متداخلة.
-        contentWindowInsets = if (!showBackButton) WindowInsets(0, 0, 0, 0) else ScaffoldDefaults.contentWindowInsets,
+        // مساحة إضافية لشريط التنقّل السفلي للنظام (نفس مشكلة الشريط العلوي
+        // المضاعفة، لكن بالأسفل هذه المرة). عند العرض كشاشة مستقلة (فتح ملف
+        // شخص آخر) نُبقي السلوك الافتراضي لأنها غير متداخلة.
+        contentWindowInsets = if (!showBackButton) {
+            WindowInsets(0, 0, 0, 0)
+        } else {
+            ScaffoldDefaults.contentWindowInsets
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            ProfileTopBar(
-                showBackButton = showBackButton,
-                onBack = onBack,
-                isOwnProfile = isOwnProfile,
-                onEditRoom = onEditRoom,
-                onOpenSettings = onOpenSettings,
-                showMoreMenu = showMoreMenu,
-                onShowMoreMenuChange = { showMoreMenu = it },
-                canShowMoreMenu = !isOwnProfile && myUid != null,
-                isBlocked = isBlocked,
-                onToggleBlockMenuItem = {
-                    showMoreMenu = false
-                    if (isBlocked) viewModel.toggleBlock(uid) else showBlockConfirm = true
+            TopAppBar(
+                title = { Text(stringResource(R.string.profile_room), fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    if (showBackButton) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = stringResource(R.string.action_back))
+                        }
+                    }
+                },
+                actions = {
+                    if (isOwnProfile) {
+                        IconButton(onClick = onEditRoom) {
+                            Icon(
+                                Icons.Filled.Edit,
+                                contentDescription = stringResource(R.string.profile_edit_profile)
+                            )
+                        }
+                    }
+                    if (onOpenSettings != null) {
+                        IconButton(onClick = onOpenSettings) {
+                            Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.settings_open))
+                        }
+                    }
+                    if (!isOwnProfile && myUid != null) {
+                        Box {
+                            IconButton(onClick = { showMoreMenu = true }) {
+                                Icon(Icons.Filled.MoreVert, contentDescription = "خيارات")
+                            }
+                            DropdownMenu(expanded = showMoreMenu, onDismissRequest = { showMoreMenu = false }) {
+                                DropdownMenuItem(
+                                    text = { Text(if (isBlocked) "إلغاء حظر المستخدم" else "حظر المستخدم") },
+                                    leadingIcon = { Icon(Icons.Filled.Block, contentDescription = null) },
+                                    onClick = {
+                                        showMoreMenu = false
+                                        if (isBlocked) viewModel.toggleBlock(uid) else showBlockConfirm = true
+                                    }
+                                )
+                            }
+                        }
+                    }
                 }
             )
         }
@@ -128,32 +150,13 @@ fun ProfileScreen(
         val user = room
         if (user == null) {
             ResponsiveContent(modifier = Modifier.padding(padding)) {
-                if (showLoadTimeout) {
-                    Column(
-                        modifier = Modifier.fillMaxSize().padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            Icons.Filled.Info,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        Text(
-                            "تعذّر تحميل هذه الغرفة. تحقّق من اتصالك بالإنترنت ثم أعد المحاولة.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.height(16.dp))
-                        Button(onClick = {
-                            showLoadTimeout = false
-                            runCatching { viewModel.load(uid, force = true) }
-                        }) { Text("إعادة المحاولة") }
-                    }
-                } else {
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                ) {
                     ProfileHeaderSkeleton()
+                    PostListSkeleton(count = 2)
                 }
             }
             return@Scaffold
@@ -161,92 +164,385 @@ fun ProfileScreen(
         val isLocked = user.isPrivateRoom && !isOwnProfile && !isTeking
 
         ResponsiveContent(modifier = Modifier.padding(padding)) {
-            // LazyColumn مهم جدًا هنا: الملف الشخصي قد يحتوي عشرات الفقرات،
-            // وكل فقرة قد تحتوي صورة Base64 كبيرة. استخدام Column+verticalScroll
-            // كان يكوّن كل البطاقات والصور دفعة واحدة، ما قد يؤدي إلى OOM وإغلاق
-            // التطبيق فور فتح الحساب على الأجهزة ذات الذاكرة المحدودة.
-            val profileListState = rememberLazyListState()
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                state = profileListState,
-                contentPadding = PaddingValues(bottom = 24.dp)
-            ) {
-                item(key = "profile-header") {
-                    ProfileHeaderSection(
-                        user = user,
-                        isOwnProfile = isOwnProfile,
-                        avatarError = avatarError,
-                        onAvatarErrorChange = { avatarError = it },
-                        onAvatarClick = { showAvatarViewer = true },
-                        onBannerClick = { showBannerViewer = true },
-                        onAvatarPicked = { base64 -> viewModel.updateAvatar(uid, base64) }
+        Column(
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+        ) {
+            // ── البانر ─────────────────────────────────────────────────────
+            val hasBannerImage = user.bannerBase64.isNotBlank() || user.bannerUrl.isNotBlank()
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(130.dp)
+                    .then(
+                        if (hasBannerImage) Modifier.clickable { showBannerViewer = true }
+                        else Modifier
                     )
+            ) {
+                when {
+                    user.bannerBase64.isNotBlank() -> Base64Image(
+                        base64 = user.bannerBase64,
+                        modifier = Modifier.fillMaxSize(),
+                        cornerRadiusDp = 0
+                    )
+                    user.bannerUrl.isNotBlank() -> AsyncImage(
+                        model = user.bannerUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    else -> Box(Modifier.fillMaxSize().background(OpouBrandGradient))
+                }
+                // تظليل خفيف أسفل البانر حتى تبرز الصورة الرمزية والاسم فوقه بوضوح
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                        .height(56.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.28f))
+                            )
+                        )
+                )
+            }
 
-                    Column(Modifier.padding(horizontal = 16.dp)) {
-                        ProfileInfoSection(
-                            user = user,
-                            isOwnProfile = isOwnProfile,
-                            isLocked = isLocked,
-                            uriHandler = uriHandler,
-                            onEditRoom = onEditRoom
+            // ── الصورة الرمزية + الاسم + التصنيف ─────────────────────────────
+            Column(Modifier.padding(horizontal = 16.dp)) {
+                Box(Modifier.offset(y = (-32).dp)) {
+                    val hasAvatarImage = user.avatarBase64.isNotBlank() || user.avatarUrl.isNotBlank()
+                    val avatarModifier = Modifier
+                        .size(72.dp)
+                        .clip(CircleShape)
+                        .border(3.dp, MaterialTheme.colorScheme.background, CircleShape)
+                        .padding(3.dp)
+                        .clip(CircleShape)
+                        .then(
+                            if (hasAvatarImage) Modifier.clickable { showAvatarViewer = true }
+                            else Modifier
                         )
 
-                        Spacer(Modifier.height(22.dp))
-
-                        ProfileActionButton(
-                            isOwnProfile = isOwnProfile,
-                            canShowTekButton = !isOwnProfile && myUid != null,
-                            isTeking = isTeking,
-                            onToggleTek = { viewModel.toggleTek(uid) },
-                            onEditRoom = onEditRoom
+                    if (user.avatarBase64.isNotBlank()) {
+                        Base64Image(base64 = user.avatarBase64, modifier = avatarModifier, cornerRadiusDp = 20)
+                    } else {
+                        AsyncImage(
+                            model = user.avatarUrl.ifBlank { null },
+                            contentDescription = null,
+                            modifier = avatarModifier.background(Color(0xFF0B7A4A))
                         )
+                    }
 
-                        if (!isLocked && posts.isNotEmpty()) {
-                            Spacer(Modifier.height(22.dp))
+                    if (isOwnProfile) {
+                        ImagePickerButton(
+                            profile = ImageCodec.ImageProfile.AVATAR,
+                            onImageReady = { encoded -> viewModel.updateAvatar(uid, encoded.base64) },
+                            onError = { avatarError = it },
+                            modifier = Modifier.align(Alignment.BottomEnd)
+                        )
+                    }
+                }
+
+                avatarError?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
+                    Spacer(Modifier.height(4.dp))
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    GradientText(text = user.username, style = MaterialTheme.typography.titleLarge)
+                    if (user.verified) {
+                        Spacer(Modifier.width(6.dp))
+                        Icon(
+                            Icons.Filled.CheckCircle,
+                            contentDescription = "موثّق",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(6.dp))
+                AssistChip(
+                    onClick = {},
+                    leadingIcon = { Icon(Icons.Filled.Sell, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                    label = { Text(user.communityName.ifBlank { stringResource(R.string.official_member_title) }) }
+                )
+
+                if (user.categories.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        user.categories.take(4).forEach { category ->
+                            AssistChip(onClick = {}, label = { Text(category, style = MaterialTheme.typography.labelSmall) })
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(18.dp))
+
+                // ── بطاقة الإحصائيات ─────────────────────────────────────
+                Card(
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        StatColumn(user.paragraphsCount, stringResource(R.string.profile_paragraphs))
+                        VerticalDivider()
+                        StatColumn(user.tekersCount, stringResource(R.string.profile_followers))
+                        VerticalDivider()
+                        StatColumn(user.tekingCount, stringResource(R.string.profile_following))
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // ── قسم "لمحة" ───────────────────────────────────────────
+                ProfileSectionCard(
+                    icon = Icons.Filled.Info,
+                    title = stringResource(R.string.profile_overview_title)
+                ) {
+                    Text(
+                        "${stringResource(R.string.profile_joined_as)} ${
+                            user.communityName.ifBlank { stringResource(R.string.official_member_title) }
+                        }",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                if (isLocked) {
+                    ProfileSectionCard(icon = Icons.Filled.Lock, title = "غرفة خاصة") {
+                        Text(
+                            "هذه الغرفة خاصة — تابع (تيك) صاحبها لرؤية فقراته وسيرته الذاتية",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    // ── قسم "السيرة الذاتية" ───────────────────────────────────
+                    ProfileSectionCard(
+                        icon = Icons.Filled.Notes,
+                        title = stringResource(R.string.profile_bio_title),
+                        onClick = if (isOwnProfile && user.bio.isBlank()) onEditRoom else null
+                    ) {
+                        if (user.bio.isNotBlank()) {
                             Text(
-                                "الفقرات",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(start = 2.dp, bottom = 8.dp)
+                                user.bio,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            Text(
+                                stringResource(
+                                    if (isOwnProfile) R.string.profile_bio_empty_self
+                                    else R.string.profile_bio_empty_other
+                                ),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                             )
                         }
+                    }
 
-                        Spacer(Modifier.height(if (isLocked || posts.isEmpty()) 24.dp else 0.dp))
+                    if (user.socialLinks.values.any { it.isNotBlank() }) {
+                        Spacer(Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            user.socialLinks.filterValues { it.isNotBlank() }.forEach { (platform, url) ->
+                                AssistChip(
+                                    onClick = {
+                                        val normalized = if (url.startsWith("http")) url else "https://$url"
+                                        runCatching { uriHandler.openUri(normalized) }
+                                    },
+                                    leadingIcon = { Icon(Icons.Filled.Link, contentDescription = null, tint = OpouAccentGreen, modifier = Modifier.size(14.dp)) },
+                                    label = { Text(platform.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.labelSmall) }
+                                )
+                            }
+                        }
+                    }
+
+                    if (user.customButtons.isNotEmpty()) {
+                        Spacer(Modifier.height(12.dp))
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            user.customButtons.filter { it.label.isNotBlank() && it.url.isNotBlank() }.forEach { button ->
+                                OutlinedButton(
+                                    onClick = {
+                                        val normalized = if (button.url.startsWith("http")) button.url else "https://${button.url}"
+                                        runCatching { uriHandler.openUri(normalized) }
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) { Text(button.label) }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(22.dp))
+
+                // ── زر الإجراء الرئيسي ──────────────────────────────────
+                if (!isOwnProfile && myUid != null) {
+                    if (isTeking) {
+                        OutlinedButton(
+                            onClick = { viewModel.toggleTek(uid) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Filled.PersonRemove, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("إلغاء التيك")
+                        }
+                    } else {
+                        Button(
+                            onClick = { viewModel.toggleTek(uid) },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Filled.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.action_tek))
+                        }
+                    }
+                } else if (isOwnProfile) {
+                    Button(
+                        onClick = onEditRoom,
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.profile_edit_profile))
                     }
                 }
 
                 if (!isLocked && posts.isNotEmpty()) {
-                    // لا نستخدم مفتاحًا مخصصًا هنا؛ بعض البيانات القديمة قد تحتوي postId فارغًا
-                    // أو متكررًا، ومفتاح LazyColumn مكرر يسبب IllegalArgumentException.
-                    items(posts) { post ->
-                        PostCard(
-                            post = post,
-                            currentReaction = ReactionType.NONE,
-                            onReact = {},
-                            onComment = {},
-                            onTek = {},
-                            onOpenProfile = {},
-                            isOwnPost = isOwnProfile,
-                            onTogglePin = if (isOwnProfile) { { viewModel.togglePin(post) } } else null,
-                            onBlockAuthor = if (!isOwnProfile) { { showBlockConfirm = true } } else null
-                        )
-                    }
+                    Spacer(Modifier.height(22.dp))
+                    Text(
+                        "الفقرات",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(start = 2.dp, bottom = 8.dp)
+                    )
+                }
+
+                Spacer(Modifier.height(if (isLocked || posts.isEmpty()) 24.dp else 0.dp))
+            }
+
+            if (!isLocked) {
+                posts.forEach { post ->
+                    PostCard(
+                        post = post,
+                        currentReaction = ReactionType.NONE,
+                        onReact = {},
+                        onComment = {},
+                        onTek = {},
+                        onOpenProfile = {},
+                        isOwnPost = isOwnProfile,
+                        onTogglePin = if (isOwnProfile) { { viewModel.togglePin(post) } } else null,
+                        onBlockAuthor = if (!isOwnProfile) { { showBlockConfirm = true } } else null
+                    )
                 }
             }
         }
+        }
     }
 
-    ProfileDialogs(
-        room = room,
-        showAvatarViewer = showAvatarViewer,
-        onDismissAvatarViewer = { showAvatarViewer = false },
-        showBannerViewer = showBannerViewer,
-        onDismissBannerViewer = { showBannerViewer = false },
-        showBlockConfirm = showBlockConfirm,
-        onDismissBlockConfirm = { showBlockConfirm = false },
-        onConfirmBlock = {
-            showBlockConfirm = false
-            viewModel.toggleBlock(uid)
-        }
+    if (showAvatarViewer) {
+        ImageViewerDialog(
+            base64 = room?.avatarBase64,
+            imageUrl = room?.avatarUrl,
+            onDismiss = { showAvatarViewer = false }
+        )
+    }
+
+    if (showBannerViewer) {
+        ImageViewerDialog(
+            base64 = room?.bannerBase64,
+            imageUrl = room?.bannerUrl,
+            onDismiss = { showBannerViewer = false }
+        )
+    }
+
+    if (showBlockConfirm) {
+        AlertDialog(
+            onDismissRequest = { showBlockConfirm = false },
+            title = { Text("حظر ${room?.username.orEmpty()}", fontWeight = FontWeight.Bold) },
+            text = { Text("لن يتمكن هذا المستخدم من رؤية فقراتك أو التفاعل معك، والعكس صحيح. يمكنك إلغاء الحظر لاحقًا.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showBlockConfirm = false
+                    viewModel.toggleBlock(uid)
+                }) { Text("حظر", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { showBlockConfirm = false }) { Text("إلغاء") } }
+        )
+    }
+}
+
+@Composable
+private fun VerticalDivider() {
+    Box(
+        Modifier
+            .height(34.dp)
+            .width(1.dp)
+            .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
     )
+}
+
+@Composable
+private fun StatColumn(count: Int, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(count.toString(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+/** بطاقة قسم موحّدة الشكل: أيقونة + عنوان في الأعلى، ثم محتوى حر بالأسفل. */
+@Composable
+private fun ProfileSectionCard(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    onClick: (() -> Unit)? = null,
+    content: @Composable () -> Unit
+) {
+    val shape = RoundedCornerShape(18.dp)
+    val colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+    val inner: @Composable () -> Unit = {
+        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            }
+            Spacer(Modifier.height(10.dp))
+            content()
+        }
+    }
+
+    if (onClick != null) {
+        Card(
+            onClick = onClick,
+            shape = shape,
+            colors = colors,
+            modifier = Modifier.fillMaxWidth()
+        ) { inner() }
+    } else {
+        Card(
+            shape = shape,
+            colors = colors,
+            modifier = Modifier.fillMaxWidth()
+        ) { inner() }
+    }
 }
