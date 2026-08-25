@@ -122,6 +122,7 @@ class FeedViewModel(
         replyCommentAuthorId: String = "",
         replyCommentAuthorUsername: String = "",
         replyCommentContent: String = "",
+        continueFromPost: Post? = null,
         onDone: () -> Unit
     ) {
         val uid = authRepo.currentUserId ?: return
@@ -131,6 +132,8 @@ class FeedViewModel(
         viewModelScope.launch {
             isPosting = true
             runCatching {
+                // إن كانت هذه الفقرة متابعة لسلسلة، نحضّر معرّف السلسلة/الفقرة السابقة/الترتيب أولًا
+                val threadInfo = continueFromPost?.let { postRepo.continueThread(it) }
                 postRepo.createPost(
                     Post(
                         authorId = uid,
@@ -153,7 +156,10 @@ class FeedViewModel(
                         replyCommentId = replyCommentId,
                         replyCommentAuthorId = replyCommentAuthorId,
                         replyCommentAuthorUsername = replyCommentAuthorUsername,
-                        replyCommentContent = replyCommentContent
+                        replyCommentContent = replyCommentContent,
+                        threadId = threadInfo?.first.orEmpty(),
+                        threadPreviousPostId = threadInfo?.second.orEmpty(),
+                        threadPosition = threadInfo?.third ?: 0
                     )
                 )
             }.onSuccess { postId ->
