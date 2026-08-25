@@ -57,10 +57,12 @@
         },
 
         "shaabiyaScore": {
+          ".write": "auth != null",
           ".validate": "newData.isNumber()"
         },
 
         "totalEngagementScore": {
+          ".write": "auth != null",
           ".validate": "newData.isNumber()"
         },
 
@@ -176,22 +178,27 @@
         },
 
         "likesCount": {
+          ".write": "auth != null",
           ".validate": "newData.isNumber() && newData.val() >= 0"
         },
 
         "dislikesCount": {
+          ".write": "auth != null",
           ".validate": "newData.isNumber() && newData.val() >= 0"
         },
 
         "commentsCount": {
+          ".write": "auth != null",
           ".validate": "newData.isNumber() && newData.val() >= 0"
         },
 
         "teksCount": {
+          ".write": "auth != null",
           ".validate": "newData.isNumber() && newData.val() >= 0"
         },
 
         "shaabiyaScore": {
+          ".write": "auth != null",
           ".validate": "newData.isNumber()"
         },
 
@@ -332,6 +339,7 @@
           },
 
           "likesCount": {
+            ".write": "auth != null",
             ".validate": "newData.isNumber() && newData.val() >= 0"
           },
 
