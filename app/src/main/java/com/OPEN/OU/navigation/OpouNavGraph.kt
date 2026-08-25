@@ -4,12 +4,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -56,8 +56,10 @@ private object Routes {
     fun thread(threadId: String) = "thread/$threadId"
 }
 
-/** تبويبات شريط التنقّل السفلي: الرئيسية / التيكرز / الحساب */
-private enum class MainTab { HOME, TEKERS, ACCOUNT }
+/** تبويبات شريط التنقّل السفلي: الرئيسية / التيكرز. زر "الإعدادات" بجانبهما ليس تبويبًا
+ *  بمحتوى دائم بل ينتقل مباشرة لشاشة الإعدادات (راجع [OpouBottomBar]) — صفحة "الحساب" التي
+ *  كانت تعرض [ProfileScreen] أُزيلت بسبب انهيار متكرر عند فتحها لم يُحدَّد سببه بعد. */
+private enum class MainTab { HOME, TEKERS }
 
 /**
  * مصنع ViewModel بسيط وصريح: يُنشئ النسخة عبر lambda عادية بدل الاعتماد على
@@ -149,8 +151,8 @@ fun OpouNavGraph(
                 navController.navigate(Routes.MAIN) { launchSingleTop = true; popUpTo(Routes.MAIN) }
             }
             "account" -> {
-                mainTab = MainTab.ACCOUNT
-                navController.navigate(Routes.MAIN) { launchSingleTop = true; popUpTo(Routes.MAIN) }
+                // زر اختصار "حساب" أصبح يفتح الإعدادات مباشرة بعد إزالة تبويب/صفحة الحساب.
+                navController.navigate(Routes.SETTINGS)
             }
         }
         onShortcutConsumed()
@@ -192,11 +194,13 @@ fun OpouNavGraph(
         }
 
         composable(Routes.MAIN) {
-            val myUid = authRepo.currentUserId
-
             Scaffold(
                 bottomBar = {
-                    OpouBottomBar(selected = mainTab, onSelect = { mainTab = it })
+                    OpouBottomBar(
+                        selected = mainTab,
+                        onSelect = { mainTab = it },
+                        onOpenSettings = { navController.navigate(Routes.SETTINGS) }
+                    )
                 }
             ) { padding ->
                 Box(Modifier.padding(padding).fillMaxSize()) {
@@ -223,25 +227,6 @@ fun OpouNavGraph(
                                 viewModel = vm,
                                 onOpenProfile = { uid -> navController.navigate(Routes.profile(uid)) }
                             )
-                        }
-
-                        MainTab.ACCOUNT -> {
-                            if (myUid != null) {
-                                // key = myUid: يضمن نسخة ViewModel جديدة إن تغيّر المستخدم المسجَّل
-                                // دخوله (تسجيل خروج ثم دخول بحساب آخر على نفس الجلسة).
-                                val vm: ProfileViewModel = viewModel(
-                                    key = "account_$myUid",
-                                    factory = SimpleViewModelFactory { ProfileViewModel() }
-                                )
-                                ProfileScreen(
-                                    uid = myUid,
-                                    viewModel = vm,
-                                    onBack = {},
-                                    showBackButton = false,
-                                    onEditRoom = { navController.navigate(Routes.editProfile(myUid)) },
-                                    onOpenSettings = { navController.navigate(Routes.SETTINGS) }
-                                )
-                            }
                         }
                     }
                 }
@@ -371,7 +356,7 @@ fun OpouNavGraph(
 }
 
 @Composable
-private fun OpouBottomBar(selected: MainTab, onSelect: (MainTab) -> Unit) {
+private fun OpouBottomBar(selected: MainTab, onSelect: (MainTab) -> Unit, onOpenSettings: () -> Unit) {
     NavigationBar(containerColor = MaterialTheme.colorScheme.background) {
         NavigationBarItem(
             selected = selected == MainTab.HOME,
@@ -405,15 +390,12 @@ private fun OpouBottomBar(selected: MainTab, onSelect: (MainTab) -> Unit) {
                 indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
             )
         )
+        // ليس تبويبًا فعليًا (لا يُخزَّن كحالة "محدَّد") بل ينقل مباشرة لشاشة الإعدادات —
+        // يُبقي تسجيل الخروج وإعدادات الخصوصية متاحين بعد إزالة صفحة "الحساب".
         NavigationBarItem(
-            selected = selected == MainTab.ACCOUNT,
-            onClick = { onSelect(MainTab.ACCOUNT) },
-            icon = {
-                Icon(
-                    if (selected == MainTab.ACCOUNT) Icons.Filled.AccountCircle else Icons.Outlined.AccountCircle,
-                    contentDescription = stringResource(R.string.nav_account)
-                )
-            },
+            selected = false,
+            onClick = onOpenSettings,
+            icon = { Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.nav_account)) },
             label = { Text(stringResource(R.string.nav_account)) },
             colors = NavigationBarItemDefaults.colors(
                 selectedIconColor = MaterialTheme.colorScheme.primary,
