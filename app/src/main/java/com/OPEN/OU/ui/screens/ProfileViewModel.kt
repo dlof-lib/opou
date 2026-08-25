@@ -63,9 +63,22 @@ class ProfileViewModel(
 
         loadJob?.cancel()
         postsJob?.cancel()
+        _room.value = null
+        _posts.value = emptyList()
+        _errorMessage.value = null
 
         loadJob = viewModelScope.launch {
-            userRepo.observeUser(uid).collect { _room.value = it }
+            try {
+                userRepo.observeUser(uid).collect { user ->
+                    _room.value = user
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // لا تسمح لأي خطأ Firebase/فك تسلسل بقتل coroutine الخاصة بالملف الشخصي.
+                _room.value = null
+                _errorMessage.value = e.message ?: "تعذّر تحميل الحساب"
+            }
         }
         val myUid = authRepo.currentUserId
         if (myUid != null && myUid != uid) {
