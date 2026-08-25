@@ -14,9 +14,9 @@ import androidx.compose.ui.unit.dp
 import com.OPEN.OU.R
 import com.OPEN.OU.data.model.Post
 import com.OPEN.OU.data.model.ReactionType
-import com.OPEN.OU.ui.components.FeedSkeletonList
 import com.OPEN.OU.ui.components.GradientText
 import com.OPEN.OU.ui.components.PostCard
+import com.OPEN.OU.ui.components.PostListSkeleton
 import com.OPEN.OU.ui.components.ResponsiveContent
 import com.OPEN.OU.ui.theme.OpouGreen
 
@@ -30,15 +30,13 @@ fun FeedScreen(
     onOpenProfile: (String) -> Unit,
     onOpenComments: (Post) -> Unit,
     onCreatePost: () -> Unit,
-    onEditPost: (Post) -> Unit = {},
-    onOpenThread: (String) -> Unit = {},
-    onContinueThread: (Post) -> Unit = {}
+    onEditPost: (Post) -> Unit = {}
 ) {
     var tab by remember { mutableStateOf(0) }
     val feed by viewModel.feed.collectAsState()
     val shaabiyat by viewModel.shaabiyat.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
     val myReactions by viewModel.myReactions.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -101,9 +99,9 @@ fun FeedScreen(
 
                 val list = if (tab == 0) feed else shaabiyat
 
-                if (isLoading && list.isEmpty()) {
-                    LazyColumn(Modifier.fillMaxSize()) {
-                        item { FeedSkeletonList() }
+                if (isLoading) {
+                    Box(Modifier.fillMaxSize()) {
+                        PostListSkeleton(count = 4)
                     }
                 } else if (list.isEmpty()) {
                     Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
@@ -127,9 +125,7 @@ fun FeedScreen(
                                 onTogglePin = { viewModel.togglePin(post) },
                                 onBlockAuthor = { viewModel.blockAuthor(post.authorId) },
                                 onEditPost = { onEditPost(post) },
-                                onDeletePost = { viewModel.deletePost(post) },
-                                onOpenThread = onOpenThread,
-                                onContinueThread = { onContinueThread(post) }
+                                onDeletePost = { viewModel.deletePost(post) }
                             )
                         }
                     }
